@@ -1,1 +1,1 @@
-web: cd pognclient && npm run preview
+web: npm run preview
