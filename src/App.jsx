@@ -176,7 +176,6 @@ const App = () => {
                 const connection = connections.get(selectedConnectionId);
                 if (connection?.readyState === 1) {
                   sendMessageToUrl(selectedConnectionId, {
-                    relayId: selectedConnectionId,
                     payload: {
                       type: "lobby",
                       action: "createLobby",
