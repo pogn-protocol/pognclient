@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { generatePrivateKey, getPublicKey } from "nostr-tools";
-import "./css/player.css";
+import "./css/player.css"; // Import your CSS file
 
 const Player = ({ setPlayerId }) => {
   const [privateKey, setPrivateKey] = useState(() => {
