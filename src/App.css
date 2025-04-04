@@ -1,13 +1,12 @@
-/* App.css */
-body {
-}
-
-#root {
-}
-
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
   height: 100vh; /* Full viewport height for vertical centering */
+}
+
+.player-container {
+  background-color: red !important; /* Ensure it overrides other styles */
+  padding: 20px;
+  border-radius: 8px;
 }

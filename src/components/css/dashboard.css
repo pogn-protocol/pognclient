@@ -4,7 +4,8 @@
   padding: 20px;
   width: 60%;
   height: auto;
-  background-color: #f9f9f9;
+  /* background-color: #f9f9f9; */
+  background-color: red !important; /* Ensure it overrides other styles */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid black;
 }
