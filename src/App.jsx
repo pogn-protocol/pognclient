@@ -10,7 +10,7 @@ import { JsonView } from "react-json-view-lite";
 import { v4 as uuidv4 } from "uuid";
 import useMessages from "./components/hooks/useMessages";
 import RelayManager from "./components/RelayManager";
-
+//
 window.onerror = function (message, source, lineno, colno, error) {
   console.error(
     "🚨 Global Error Caught:",
