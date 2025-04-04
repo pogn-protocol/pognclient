@@ -362,7 +362,7 @@ const Lobby = ({
           <>
             <div className="lobbyMessages d-flex flex-row">
               <div>
-                <h5>Lobby Messages Received</h5>
+                <h6>Received</h6>
                 {/* Previous Messages collapsed in a <details> section */}
                 {Array.isArray(lobbyMessagesReceived) &&
                   lobbyMessagesReceived.length > 1 && (
@@ -371,29 +371,33 @@ const Lobby = ({
                         Previous Messages ({lobbyMessagesReceived.length - 1})
                       </summary>
                       {lobbyMessagesReceived.slice(0, -1).map((msg, index) => (
-                        <JsonView
-                          data={msg}
-                          key={`prev-lobby-msg-${index}`}
-                          shouldExpandNode={() => false} // keep these collapsed
-                          style={{ fontSize: "14px", lineHeight: "1.2" }}
-                        />
+                        <div className="jsonMessage">
+                          <JsonView
+                            data={msg}
+                            key={`prev-lobby-msg-${index}`}
+                            shouldExpandNode={() => false} // keep these collapsed
+                            style={{ fontSize: "14px", lineHeight: "1.2" }}
+                          />
+                        </div>
                       ))}
                     </details>
                   )}
                 {/* Last message shown expanded */}
                 {lobbyMessagesReceived.slice(-1).map((msg, index) => (
-                  <JsonView
-                    data={msg}
-                    key={`last-lobby-msg-${index}`}
-                    shouldExpandNode={(level, value, field) =>
-                      level === 0 || field === "payload"
-                    }
-                    style={{ fontSize: "14px", lineHeight: "1.2" }}
-                  />
+                  <div className="jsonMessage">
+                    <JsonView
+                      data={msg}
+                      key={`last-lobby-msg-${index}`}
+                      shouldExpandNode={(level, value, field) =>
+                        level === 0 || field === "payload"
+                      }
+                      style={{ fontSize: "14px", lineHeight: "1.2" }}
+                    />
+                  </div>
                 ))}
               </div>
               <div>
-                <h5>Lobby Messages Sent</h5>
+                <h6>Sent</h6>
 
                 {/* Previous Messages collapsed in a <details> section */}
                 {Array.isArray(lobbyMessagesSent) &&
@@ -403,50 +407,54 @@ const Lobby = ({
                         Previous Messages ({lobbyMessagesSent.length - 1})
                       </summary>
                       {lobbyMessagesSent.slice(0, -1).map((msg, index) => (
-                        <JsonView
-                          data={msg}
-                          key={`prev-lobby-sent-msg-${index}`}
-                          shouldExpandNode={() => false}
-                          style={{ fontSize: "14px", lineHeight: "1.2" }}
-                        />
+                        <div className="jsonMessage">
+                          <JsonView
+                            data={msg}
+                            key={`prev-lobby-sent-msg-${index}`}
+                            shouldExpandNode={() => false}
+                            style={{ fontSize: "14px", lineHeight: "1.2" }}
+                          />
+                        </div>
                       ))}
                     </details>
                   )}
 
                 {/* Last message shown expanded */}
                 {lobbyMessagesSent.slice(-1).map((msg, index) => (
-                  <JsonView
-                    data={msg}
-                    key={`last-lobby-sent-msg-${index}`}
-                    shouldExpandNode={(level, value, field) =>
-                      level === 0 || field === "payload"
-                    }
-                    style={{ fontSize: "14px", lineHeight: "1.2" }}
-                  />
+                  <div className="jsonMessage">
+                    <JsonView
+                      data={msg}
+                      key={`last-lobby-sent-msg-${index}`}
+                      shouldExpandNode={(level, value, field) =>
+                        level === 0 || field === "payload"
+                      }
+                      style={{ fontSize: "14px", lineHeight: "1.2" }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
-            <div className="selectedGameState">
-              <h5>Selected Game State</h5>
-              <JsonView
-                data={selectedGamestate}
-                shouldExpandNode={(level) => level === 0} // Expand only the first level
-                style={{ fontSize: "14px", lineHeight: "1.2" }}
-              />
+
+            <div className="lobbyPlayers">
+              <h5>Players in Lobby: {lobbyPlayers.length}</h5>
+              <ul>
+                {lobbyPlayers.length > 0 ? (
+                  lobbyPlayers.map((player, index) => (
+                    <li key={index}>
+                      <strong>Player {index + 1}:</strong>{" "}
+                      <span title={player}>
+                        {player.length > 20
+                          ? `${player.slice(0, 8)}...${player.slice(-8)}`
+                          : player}
+                      </span>
+                    </li>
+                  ))
+                ) : (
+                  <li>No players connected yet</li>
+                )}
+              </ul>
             </div>
-            <h5>LobbyId: {lobbyId}</h5>
-            <p>Players in Lobby: {lobbyPlayers.length}</p>
-            <ul>
-              {lobbyPlayers.length > 0 ? (
-                lobbyPlayers.map((player, index) => (
-                  <li key={index}>
-                    <strong>Player {index + 1}:</strong> {player}
-                  </li>
-                ))
-              ) : (
-                <li>No players connected yet</li>
-              )}
-            </ul>
+
             <h5>Create New Game:</h5>
             <label
               htmlFor="gameTypeSelect"
@@ -552,10 +560,19 @@ const Lobby = ({
               )}
 
             <div className="lobbyGames">
+              <div className="selectedGameState jsonMessage">
+                <h5>Selected Game State</h5>
+                <JsonView
+                  data={selectedGamestate}
+                  shouldExpandNode={(level) => level === 0} // Expand only the first level
+                  style={{ fontSize: "14px", lineHeight: "1.2" }}
+                />
+              </div>
               {lobbyGames.length > 0 ? (
                 <ul>
                   {lobbyGames.map((game, index) => (
                     <li
+                      className="lobbyGame"
                       key={index}
                       onClick={() => handleSelect(game.gameId)} // Handle click to select the game
                       style={{
@@ -603,7 +620,24 @@ const Lobby = ({
                           {Object.keys(game.players || {}).length} /{" "}
                           {game.instance?.maxPlayers || "N/A"}
                         </div>
-                        {game.players &&
+                        {game.players.length > 0 ? (
+                          <ul>
+                            {game.players.map((playerId, index) => (
+                              <li key={index}>
+                                <strong>Player {index + 1}:</strong>{" "}
+                                {playerId.length > 10
+                                  ? `${playerId.slice(0, 8)}...${playerId.slice(
+                                      -8
+                                    )}`
+                                  : playerId}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div>No players connected yet</div>
+                        )}
+
+                        {/* {game.players &&
                         Object.keys(game.players).length > 0 ? (
                           <ul>
                             {Object.entries(game.players).map(
@@ -617,7 +651,7 @@ const Lobby = ({
                           </ul>
                         ) : (
                           <div>No players connected yet</div>
-                        )}
+                        )} */}
                       </div>
                     </li>
                   ))}

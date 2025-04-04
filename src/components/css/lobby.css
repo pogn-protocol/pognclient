@@ -8,8 +8,37 @@
   margin: 20px;
 }
 
-.chat {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.lobbySelect {
+  width: 95%;
+}
+
+.lobbyPlayers {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.lobbyPlayers ul {
+  padding-left: 1rem;
+}
+
+.lobbyPlayers li {
+  margin-bottom: 6px;
+  font-size: 1rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.lobbyGames ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.lobbyGame li {
+  margin-bottom: 6px;
+  font-size: 1rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }

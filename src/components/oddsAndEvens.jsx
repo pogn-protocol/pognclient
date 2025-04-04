@@ -163,11 +163,13 @@ const OddsAndEvens = ({
         placeholder="Enter a number"
       />
       <button onClick={handleNumberSubmit}>Submit Number</button>
-      <JsonView
-        data={localGameState}
-        shouldExpandNode={(level) => level === 0}
-        style={{ fontSize: "14px", lineHeight: "1.2" }}
-      />
+      <div className="jsonMessage">
+        <JsonView
+          data={localGameState}
+          shouldExpandNode={(level) => level === 0}
+          style={{ fontSize: "14px", lineHeight: "1.2" }}
+        />
+      </div>
       <button
         onClick={() =>
           sendGameMessage({

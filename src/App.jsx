@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Player from "./components/Player";
 import Dashboard from "./components/Dashboard";
-import "./App.css";
+import "./app.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import ErrorBoundary from "./ErrorBoundary";
 import Lobby from "./components/Lobby";
@@ -188,11 +188,11 @@ const App = () => {
 
                   console.log("🎯 Sent createLobby to", selectedConnectionId);
 
-                  if (autoLogin) {
-                    setSignedInLobbies((prev) =>
-                      new Set(prev).add(createLobbyId)
-                    );
-                  }
+                  // if (autoLogin) {
+                  //   setSignedInLobbies((prev) =>
+                  //     new Set(prev).add(createLobbyId)
+                  //   );
+                  // }
                 } else {
                   console.warn(`Connection ${selectedConnectionId} not ready`);
                 }
@@ -201,7 +201,7 @@ const App = () => {
               Create Lobby
             </button>
 
-            <div className="form-check form-switch d-flex align-items-center">
+            {/* <div className="form-check form-switch d-flex align-items-center">
               <input
                 className="form-check-input"
                 type="checkbox"
@@ -215,7 +215,7 @@ const App = () => {
               >
                 Auto Login
               </label>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -252,18 +252,18 @@ const App = () => {
                   ...prev,
                   { id: lobbyConnectId, url: lobbyConnectUrl, type: "lobby" },
                 ]);
-                if (autoLogin) {
-                  setSignedInLobbies((prev) =>
-                    new Set(prev).add(lobbyConnectId)
-                  );
-                }
+                // if (autoLogin) {
+                //   setSignedInLobbies((prev) =>
+                //     new Set(prev).add(lobbyConnectId)
+                //   );
+                // }
                 setLobbyConnectUrl("");
                 setLobbyConnectId("");
               }}
             >
               Connect
             </button>
-            <div className="form-check form-switch d-flex align-items-center ms-2">
+            {/* <div className="form-check form-switch d-flex align-items-center ms-2">
               <input
                 className="form-check-input"
                 type="checkbox"
@@ -277,11 +277,11 @@ const App = () => {
               >
                 Auto Login
               </label>
-            </div>
+            </div> */}
           </div>
         </div>
 
-        <div className="col-md-12 mt-3">
+        <div className="lobbySelect col-md-12 mt-3">
           <h4>Select a Lobby:</h4>
 
           {/* Lobby selector buttons */}

@@ -13,7 +13,7 @@ const Dashboard = ({ playerName, playerId }) => {
   return (
     <div className="player-dashboard mt-2">
       <h5>Player Dashboard</h5>
-      <div className="player-info">
+      <div className="d-flex flex-row player-info">
         <div className="avatar">
           <img src={avatarSvg} alt="Player Avatar" />
         </div>

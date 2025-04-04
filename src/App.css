@@ -5,8 +5,21 @@
   height: 100vh; /* Full viewport height for vertical centering */
 }
 
-.player-container {
-  background-color: red !important; /* Ensure it overrides other styles */
-  padding: 20px;
-  border-radius: 8px;
+/* Reset margins and font sizes */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-size: 12px; /* Base font size */
+}
+
+.jsonMessage {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap; /* Keeps indentation but wraps */
 }
