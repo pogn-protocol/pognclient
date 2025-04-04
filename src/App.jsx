@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Player from "./components/Player";
 import Dashboard from "./components/Dashboard";
-import "./app.css";
+import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import ErrorBoundary from "./ErrorBoundary";
 import Lobby from "./components/Lobby";
