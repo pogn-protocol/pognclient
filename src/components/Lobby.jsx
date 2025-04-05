@@ -371,10 +371,12 @@ const Lobby = ({
                         Previous Messages ({lobbyMessagesReceived.length - 1})
                       </summary>
                       {lobbyMessagesReceived.slice(0, -1).map((msg, index) => (
-                        <div className="jsonMessage">
+                        <div
+                          className="jsonMessage"
+                          key={`prev-lobby-msg-${index}`}
+                        >
                           <JsonView
                             data={msg}
-                            key={`prev-lobby-msg-${index}`}
                             shouldExpandNode={() => false} // keep these collapsed
                             style={{ fontSize: "14px", lineHeight: "1.2" }}
                           />
@@ -384,7 +386,7 @@ const Lobby = ({
                   )}
                 {/* Last message shown expanded */}
                 {lobbyMessagesReceived.slice(-1).map((msg, index) => (
-                  <div className="jsonMessage">
+                  <div className="jsonMessage" key={`prev-lobby-msg-${index}`}>
                     <JsonView
                       data={msg}
                       key={`last-lobby-msg-${index}`}
@@ -407,7 +409,10 @@ const Lobby = ({
                         Previous Messages ({lobbyMessagesSent.length - 1})
                       </summary>
                       {lobbyMessagesSent.slice(0, -1).map((msg, index) => (
-                        <div className="jsonMessage">
+                        <div
+                          className="jsonMessage"
+                          key={`prev-lobby-msg-${index}`}
+                        >
                           <JsonView
                             data={msg}
                             key={`prev-lobby-sent-msg-${index}`}
@@ -421,7 +426,7 @@ const Lobby = ({
 
                 {/* Last message shown expanded */}
                 {lobbyMessagesSent.slice(-1).map((msg, index) => (
-                  <div className="jsonMessage">
+                  <div className="jsonMessage" key={`prev-lobby-msg-${index}`}>
                     <JsonView
                       data={msg}
                       key={`last-lobby-sent-msg-${index}`}
@@ -440,7 +445,7 @@ const Lobby = ({
               <ul>
                 {lobbyPlayers.length > 0 ? (
                   lobbyPlayers.map((player, index) => (
-                    <li key={index}>
+                    <li key={player}>
                       <strong>Player {index + 1}:</strong>{" "}
                       <span title={player}>
                         {player.length > 20
@@ -623,7 +628,7 @@ const Lobby = ({
                         {game.players.length > 0 ? (
                           <ul>
                             {game.players.map((playerId, index) => (
-                              <li key={index}>
+                              <li key={`${playerId}-${index}`}>
                                 <strong>Player {index + 1}:</strong>{" "}
                                 {playerId.length > 10
                                   ? `${playerId.slice(0, 8)}...${playerId.slice(

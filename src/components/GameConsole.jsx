@@ -341,10 +341,12 @@ const GameConsole = ({
                           Previous ({gameMessages[gameId].length - 1})
                         </summary>
                         {gameMessages[gameId].slice(0, -1).map((msg, i) => (
-                          <div className="jsonMessage">
+                          <div
+                            className="jsonMessage"
+                            key={`recv-${gameId}-${i}`}
+                          >
                             <JsonView
                               data={msg}
-                              key={`recv-${gameId}-${i}`}
                               shouldExpandNode={() => false}
                               style={{ fontSize: "14px", lineHeight: "1.2" }}
                             />
@@ -353,10 +355,12 @@ const GameConsole = ({
                       </details>
                     )}
                     {gameMessages[gameId]?.slice(-1).map((msg, i) => (
-                      <div className="jsonMessage">
+                      <div
+                        className="jsonMessage"
+                        key={`recv-last-${gameId}-${i}`}
+                      >
                         <JsonView
                           data={msg}
-                          key={`recv-last-${gameId}-${i}`}
                           shouldExpandNode={() => true}
                           style={{ fontSize: "14px", lineHeight: "1.2" }}
                         />
@@ -373,10 +377,12 @@ const GameConsole = ({
                           Previous ({gameMessagesSent[gameId].length - 1})
                         </summary>
                         {gameMessagesSent[gameId].slice(0, -1).map((msg, i) => (
-                          <div className="jsonMessage">
+                          <div
+                            className="jsonMessage"
+                            key={`sent-${gameId}-${i}`}
+                          >
                             <JsonView
                               data={msg}
-                              key={`sent-${gameId}-${i}`}
                               shouldExpandNode={() => false}
                               style={{ fontSize: "14px", lineHeight: "1.2" }}
                             />
@@ -385,10 +391,12 @@ const GameConsole = ({
                       </details>
                     )}
                     {gameMessagesSent[gameId]?.slice(-1).map((msg, i) => (
-                      <div className="jsonMessage">
+                      <div
+                        className="jsonMessage"
+                        key={`sent-last-${gameId}-${i}`}
+                      >
                         <JsonView
                           data={msg}
-                          key={`sent-last-${gameId}-${i}`}
                           shouldExpandNode={() => true}
                           style={{ fontSize: "14px", lineHeight: "1.2" }}
                         />
