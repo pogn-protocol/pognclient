@@ -61,6 +61,14 @@ const App = () => {
   );
 
   useEffect(() => {
+    setLobbyConnectUrl(
+      import.meta.env.VITE_LOBBY_WS_URL ||
+        "wss://pogn-a5fe730540b4.herokuapp.com"
+    );
+    setLobbyConnectId("lobby1");
+  }, []);
+
+  useEffect(() => {
     if (lobbyConnectionsInit) {
       console.warn(
         "⚠️ Already connected to lobbies. Skipping lobby connecting..."
@@ -74,8 +82,15 @@ const App = () => {
 
     console.log("✅ Setting lobby and game URLs...");
     const initialLobbyUrls = [
-      { id: "lobby1", url: "ws://localhost:8080", type: "lobby" },
+      //  { id: "lobby1", url: "ws://localhost:8080", type: "lobby" },
       // { id: "lobby2", url: "ws://localhost:8081", type: "lobby" },
+      {
+        id: "lobby1",
+        url:
+          import.meta.env.VITE_LOBBY_WS_URL ||
+          "wss://pogn-a5fe730540b4.herokuapp.com/",
+        type: "lobby",
+      },
     ];
     console.log("🔧 Cleaning up old WebSocket connections on load...");
 
