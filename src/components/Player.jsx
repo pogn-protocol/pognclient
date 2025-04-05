@@ -3,36 +3,58 @@ import { generatePrivateKey, getPublicKey } from "nostr-tools";
 
 const Player = ({ setPlayerId }) => {
   const [privateKey, setPrivateKey] = useState(() => {
-    // Try to load the private key from sessionStorage
-    const storedKey = sessionStorage.getItem("nostrPrivateKey");
+    const storedKey = localStorage.getItem("nostrPrivateKey");
     if (storedKey) {
-      console.log("Loaded private key from sessionStorage.");
+      console.log("🔑 Loaded private key from localStorage.");
       return storedKey;
     }
-    // Generate a new private key if none exists
     const newKey = generatePrivateKey();
-    sessionStorage.setItem("nostrPrivateKey", newKey);
-    console.log("Generated and stored new private key.");
+    localStorage.setItem("nostrPrivateKey", newKey);
+    console.log("🆕 Generated and stored new private key.");
     return newKey;
   });
 
   const [playerId, setPlayerIdState] = useState(() => {
-    // Derive the public key from the private key
-    const newPlayerId = getPublicKey(privateKey);
-    sessionStorage.setItem("nostrPublicKey", newPlayerId);
-    console.log("Generated and stored new public key.");
-    return newPlayerId;
+    const storedId = localStorage.getItem("nostrPublicKey");
+    if (storedId) {
+      console.log("🧠 Loaded playerId from localStorage.");
+      return storedId;
+    }
+    const derived = getPublicKey(privateKey);
+    localStorage.setItem("nostrPublicKey", derived);
+    return derived;
   });
 
-  // Send the public key to App.jsx when the component mounts
   useEffect(() => {
     if (setPlayerId && playerId) {
-      setPlayerId(playerId); // Pass playerId up to App.jsx
+      setPlayerId(playerId);
     }
   }, [setPlayerId, playerId]);
 
-  // No UI is needed if Player is just logic.
-  return null;
+  const handleChange = (e) => {
+    const newId = e.target.value.trim();
+    setPlayerIdState(newId);
+    localStorage.setItem("nostrPublicKey", newId);
+    if (setPlayerId) setPlayerId(newId);
+  };
+
+  return (
+    <div className="mb-3">
+      <label className="form-label">Player ID (Public Key):</label>
+      <input
+        type="text"
+        className="form-control"
+        value={playerId}
+        onChange={handleChange}
+        placeholder="Enter your Nostr public key..."
+        style={{ fontFamily: "monospace", fontSize: "0.9em" }}
+      />
+      <div className="form-text">
+        Your public key will be stored in <code>localStorage</code>.
+        Auto-generated if empty.
+      </div>
+    </div>
+  );
 };
 
 export default Player;
