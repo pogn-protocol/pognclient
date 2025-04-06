@@ -16,7 +16,6 @@ const GameConsole = ({
   message = {},
   playerId = "",
   gamesToInit,
-  lobbyUrl,
   gameConnections,
   setAddRelayConnections,
   setGamesToInit,

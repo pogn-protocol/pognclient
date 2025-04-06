@@ -10,6 +10,8 @@ import { JsonView } from "react-json-view-lite";
 import { v4 as uuidv4 } from "uuid";
 import useMessages from "./components/hooks/useMessages";
 import RelayManager from "./components/RelayManager";
+import pognClientConfigs from "./pognClientConfigs";
+console.log("pognClientConfigs", pognClientConfigs);
 //
 window.onerror = function (message, source, lineno, colno, error) {
   console.error(
@@ -42,7 +44,10 @@ const App = () => {
   const [createLobbyId, setCreateLobbyId] = useState("lobby3");
   const [selectedConnectionId, setSelectedConnectionId] = useState("");
   const [lobbyConnectId, setLobbyConnectId] = useState("lobby3");
-  const [lobbyConnectUrl, setLobbyConnectUrl] = useState("ws://localhost:8082");
+
+  const [lobbyConnectUrl, setLobbyConnectUrl] = useState(
+    pognClientConfigs.LOBBY_WS_URL
+  );
   const [connections, setConnections] = useState(new Map());
 
   const {
@@ -61,10 +66,7 @@ const App = () => {
   );
 
   useEffect(() => {
-    setLobbyConnectUrl(
-      import.meta.env.VITE_LOBBY_WS_URL ||
-        "wss://pogn-a5fe730540b4.herokuapp.com"
-    );
+    setLobbyConnectUrl(pognClientConfigs.LOBBY_WS_URL);
     setLobbyConnectId("lobby1");
   }, []);
 
@@ -82,13 +84,9 @@ const App = () => {
 
     console.log("✅ Setting lobby and game URLs...");
     const initialLobbyUrls = [
-      //  { id: "lobby1", url: "ws://localhost:8080", type: "lobby" },
-      // { id: "lobby2", url: "ws://localhost:8081", type: "lobby" },
       {
         id: "lobby1",
-        url:
-          import.meta.env.VITE_LOBBY_WS_URL ||
-          "wss://pogn-a5fe730540b4.herokuapp.com/",
+        url: pognClientConfigs.LOBBY_WS_URL,
         type: "lobby",
       },
     ];
@@ -246,7 +244,7 @@ const App = () => {
             <input
               type="text"
               className="form-control"
-              placeholder="ws://localhost:8081"
+              placeholder="Relay URL"
               style={{ width: "300px" }}
               value={lobbyConnectUrl}
               onChange={(e) => setLobbyConnectUrl(e.target.value)}
@@ -356,7 +354,6 @@ const App = () => {
             sendMessage={(id, msg) => handleSendMessage(id, msg)}
             sendLobbyMessage={(id, msg) => handleSendMessage(id, msg)}
             gamesToInit={gamesToInit}
-            lobbyUrl={"ws://localhost:8080"}
             gameConnections={
               new Map(
                 Array.from(connections.entries()).filter(
@@ -450,9 +447,9 @@ const App = () => {
               <div key={index}>
                 <JsonView
                   data={msg}
-                  shouldExpandNode={(level) =>
-                    index === arr.length - 1 ? level === 0 : false
-                  } // Expand the last message only
+                  shouldExpandNode={(level, value, field) =>
+                    level === 0 || field === "payload"
+                  }
                   style={{
                     fontSize: "14px",
                     lineHeight: "1.2",
