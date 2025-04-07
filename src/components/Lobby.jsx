@@ -11,11 +11,9 @@ const Lobby = ({
   message,
   setGamesToInit,
   lobbyId,
-  setRemoveRelayConnections,
   lobbyConnections,
   signedInLobbies,
   setSignedInLobbies,
-   ,
 }) => {
   const [signedIntoLobby, setSignedIntoLobby] = useState(false);
   const [lobbyGames, setLobbyGames] = useState([]);
