@@ -25,8 +25,8 @@ export function verifyLobbyMessage(message, truePlayerId, trueLobbyId) {
     console.warn("LobbyId mismatch:", lobbyId, trueLobbyId);
   }
 
-  if (!gameId || !playerId || !lobbyId) {
-    console.warn("Missing gameId, playerId, or lobbyId in payload:", payload);
+  if (!gameId) {
+    console.warn("Missing gameId in payload:", payload);
     // return false;
   }
 

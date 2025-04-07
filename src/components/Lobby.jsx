@@ -15,7 +15,7 @@ const Lobby = ({
   lobbyConnections,
   signedInLobbies,
   setSignedInLobbies,
-  setAddRelayConnections,
+   ,
 }) => {
   const [signedIntoLobby, setSignedIntoLobby] = useState(false);
   const [lobbyGames, setLobbyGames] = useState([]);
@@ -500,11 +500,56 @@ const Lobby = ({
               />
             </div>
 
-            <div className="d-grid">
-              <button onClick={handleCreateGame}>Create New Game</button>
-
-              <button onClick={handleListGames}>Refresh Games</button>
+            <div className="flex flex-col gap-2 mt-4">
               <button
+                onClick={handleCreateGame}
+                className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold"
+              >
+                Create New Game
+              </button>
+
+              <button
+                onClick={handleListGames}
+                className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              >
+                Refresh Games
+              </button>
+
+              <button
+                onClick={handleJoinGame}
+                disabled={
+                  hasJoined ||
+                  isJoining ||
+                  lobbyPlayers.length === 0 ||
+                  !selectedGamestate.gameId ||
+                  selectedGamestate.players.length >=
+                    selectedGamestate.instance.maxPlayers
+                }
+                className={`px-4 py-2 rounded font-semibold text-white ${
+                  hasJoined ||
+                  isJoining ||
+                  lobbyPlayers.length === 0 ||
+                  !selectedGamestate.gameId ||
+                  selectedGamestate.players.length >=
+                    selectedGamestate.instance.maxPlayers
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-yellow-500 hover:bg-yellow-600"
+                }`}
+              >
+                {hasJoined ? "Joined" : isJoining ? "Joining..." : "Join Game"}
+              </button>
+            </div>
+
+            {/* <div className="d-grid">
+              <button className="btn btn-primary" onClick={handleCreateGame}>
+                Create New Game
+              </button>
+
+              <button className="btn btn-primary" onClick={handleListGames}>
+                Refresh Games
+              </button>
+              <button
+                className="btn btn-primary"
                 onClick={handleJoinGame}
                 disabled={
                   hasJoined ||
@@ -521,9 +566,9 @@ const Lobby = ({
                   ? "Joining..." // If the player is in the process of joining
                   : "Join Game"}{" "}
               </button>
-            </div>
+            </div> */}
 
-            {hasJoined &&
+            {/* {hasJoined &&
               selectedGameId &&
               (selectedGamestate.lobbyStatus === "canStart" ||
                 selectedGamestate.lobbyStatus === "readyToStart") && (
@@ -562,7 +607,7 @@ const Lobby = ({
                     ? "Start Game" // Show "Start Game" if 2+ players
                     : "Waiting for Players"}{" "}
                 </button>
-              )}
+              )} */}
 
             <div className="lobbyGames">
               <div className="selectedGameState jsonMessage">

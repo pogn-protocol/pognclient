@@ -44,6 +44,7 @@ const App = () => {
   const [createLobbyId, setCreateLobbyId] = useState("lobby3");
   const [selectedConnectionId, setSelectedConnectionId] = useState("");
   const [lobbyConnectId, setLobbyConnectId] = useState("lobby3");
+  const [selectedRelayId, setSelectedRelayId] = useState(null);
 
   const [lobbyConnectUrl, setLobbyConnectUrl] = useState(
     pognClientConfigs.LOBBY_WS_URL
@@ -125,27 +126,36 @@ const App = () => {
     }
   }, [connectedLobbies, selectedConnectionId]);
 
+  const gameConnectionsReady = new Map(
+    Array.from(connections.entries()).filter(
+      ([id, conn]) => conn.type === "game" && conn.readyState === 1
+    )
+  );
+
   return (
     <ErrorBoundary>
       <div className="container mt-5">
         <Player setPlayerId={setPlayerId} />
         {playerId && <Dashboard playerName="Player" playerId={playerId} />}
         <div className="mt-3">
-          {addRelayConnections && addRelayConnections.length > 0 ? (
-            <>
-              <RelayManager
-                addRelayConnections={addRelayConnections}
-                removeRelayConnections={removeRelayConnections}
-                setRemoveRelayConnections={setRemoveRelayConnections}
-                onMessage={handleMessage}
-                setSendMessage={setSendMessageToUrl}
-                connections={connections}
-                setConnections={setConnections}
-              />
-            </>
+          {/* {connections.size > 0 ? (
+            <> */}
+          <RelayManager
+            addRelayConnections={addRelayConnections}
+            setAddRelayConnections={setAddRelayConnections}
+            removeRelayConnections={removeRelayConnections}
+            setRemoveRelayConnections={setRemoveRelayConnections}
+            onMessage={handleMessage}
+            setSendMessage={setSendMessageToUrl}
+            connections={connections}
+            setConnections={setConnections}
+            selectedRelayId={selectedRelayId}
+            setSelectedRelayId={setSelectedRelayId}
+          />
+          {/* </>
           ) : (
             <p>No connections open...</p>
-          )}
+          )} */}
         </div>
 
         <div className="mt-3 w-100 text-start">
@@ -344,9 +354,10 @@ const App = () => {
             </div>
           ))}
         </div>
-        {connections.size === 0 && <p>Lobby not started...</p>}
         {console.log("Player ID", playerId)}
         {console.log("Games to init", gamesToInit)}
+        {console.log("Game connections ready", gameConnectionsReady)}
+        {/* {playerId && gamesToInit.size > 0 ? ( */}
         {playerId ? (
           <GameConsole
             playerId={playerId}

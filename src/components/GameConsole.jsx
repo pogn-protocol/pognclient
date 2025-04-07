@@ -37,6 +37,12 @@ const GameConsole = ({
   };
 
   useEffect(() => {
+    if (!message || Object.keys(message).length === 0) {
+      //console.warn("Skipping game message verification: empty message");
+      return;
+    }
+    verifyGameMessage(message, playerId, gameId);
+
     if (!verifyGameMessage(message)) return;
 
     const { payload } = message;
@@ -69,13 +75,21 @@ const GameConsole = ({
       const gamesArray = Array.from(gamesToInit.values()).flat();
       console.log("🚀 Initializing new games:", gamesArray);
 
-      setAddRelayConnections(
-        gamesArray.map((game) => ({
+      // setAddRelayConnections(
+      //   gamesArray.map((game) => ({
+      //     id: game.gameId,
+      //     url: game.wsAddress,
+      //     type: "game",
+      //   }))
+      // );
+      setAddRelayConnections((prev) => [
+        ...prev,
+        ...gamesArray.map((game) => ({
           id: game.gameId,
           url: game.wsAddress,
           type: "game",
-        }))
-      );
+        })),
+      ]);
     }
   }, [gamesToInit, setAddRelayConnections]);
 

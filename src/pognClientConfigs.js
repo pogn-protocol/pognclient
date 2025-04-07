@@ -1,8 +1,8 @@
 // src/pognClientConfigs.js
 
-//const ENV = import.meta.env.MODE;
+const ENV = import.meta.env.MODE;
 //const ENV = "development"; // Change this to "development" for local testing
-const ENV = "production"; // Change this to "production" for production testing
+//const ENV = "production"; // Change this to "production" for production testing
 
 const configs = {
   development: {
