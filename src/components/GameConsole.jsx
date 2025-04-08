@@ -41,20 +41,24 @@ const GameConsole = ({
       //console.warn("Skipping game message verification: empty message");
       return;
     }
-
+    console.log("GameConsole message:", message);
     const { payload } = message;
+    console.log("GameConsole payload:", payload);
     const { action, gameId } = payload;
-
+    console.log("GameConsole action:", action, "gameId:", gameId);
     if (!verifyGameMessage(message, playerId, gameId)) {
       return;
     }
 
     switch (action) {
       case "gameAction":
-      case "results":
         updateGameState(gameId, payload); // ✅ Centralized update
         console.log(`🛠️ Updated GameState for ${gameId}:`, payload);
         break;
+      // case "results":
+      //   updateGameState(gameId, payload); // ✅ Centralized update
+      //   console.log(`🛠️ Updated GameState for ${gameId}:`, payload);
+      //   break;
 
       case "gameEnded":
         setGameStates((prevStates) => {

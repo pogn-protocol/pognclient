@@ -8,33 +8,25 @@ import {
 } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
 
-const OddsAndEvens = ({
-  sendGameMessage,
-  playerId,
-  gameState,
-  gameId,
-  disconnectSelf,
-}) => {
+const OddsAndEvens = ({ sendGameMessage, playerId, gameState, gameId }) => {
+  const [roleRequested, setRoleRequested] = useState(false);
   const [role, setRole] = useState(null); // Player's assigned role
   const [number, setNumber] = useState(""); // Player's chosen number
   const [localGameState, setLocalGameState] = useState({
     gameId: gameId,
     gameStatus: null,
-    action: null,
     winner: null,
     sum: null,
     roles: {}, // Store the roles assigned by the server
     numbers: {}, // Track submitted numbers
     initialized: false,
   });
+  const [submittedNumber, setSubmittedNumber] = useState(null); // Track submitted number
 
   useEffect(() => {
     console.log("Warning gameId changed", gameId);
   }, [gameId]);
 
-  /**
-   * Updates local game state when the game state changes.
-   */
   useEffect(() => {
     console.log(`${gameId} gameState changed`, gameState);
     if (!gameState) {
@@ -47,88 +39,73 @@ const OddsAndEvens = ({
     }));
   }, [gameState]);
 
-  /**
-   * Initializes the game by fetching roles if not already assigned.
-   */
   useEffect(() => {
-    // If the game state is not initialized, fetch roles.
-    if (!localGameState.initialized) {
-      console.log(
-        `${gameId} Roles not assigned yet. Fetching from the relay...`
-      );
-      setLocalGameState((prev) => ({
-        ...prev,
-        initialized: true, // Mark as initialized to prevent re-triggering
-      }));
+    // Only trigger if roles aren't in the latest gameState
+    if (role) return;
+    if (roleRequested) return; // Prevent multiple requests
+    setRoleRequested(true); // Set to true to prevent multiple requests
+    const rolesMissing =
+      !gameState?.roles || Object.keys(gameState.roles).length < 2;
+    if (rolesMissing) {
+      console.log(`${gameId} requesting roles...`);
       sendGameMessage({
         payload: {
           type: "game",
           action: "gameAction",
           gameAction: "getRoles",
           playerId,
-          gameId: gameId,
+          gameId,
         },
       });
-
-      return;
     }
+  }, [localGameState?.roles, gameId, playerId, sendGameMessage]);
 
-    if (!localGameState || !localGameState.gameAction) return;
+  useEffect(() => {
+    if (!gameState || !gameState.gameAction) return;
 
-    console.log("gameState.gameAction fired", localGameState);
+    // if (!localGameState.initialized) {
+    //   console.log(
+    //     `${gameId} Roles not assigned yet. Fetching from the relay...`
+    //   );
+    //   setLocalGameState((prev) => ({ ...prev, initialized: true }));
+    //   sendGameMessage({
+    //     payload: {
+    //       type: "game",
+    //       action: "gameAction",
+    //       gameAction: "getRoles",
+    //       playerId,
+    //       gameId,
+    //     },
+    //   });
+    //   return;
+    // }
 
-    switch (localGameState?.gameAction) {
+    switch (gameState.gameAction) {
       case "rolesAssigned":
-        console.log(gameId, "Roles assigned:", localGameState.roles);
-        setRole(localGameState.roles[playerId]);
-        setLocalGameState((prev) => ({
-          ...prev,
-          gameStatus: localGameState.gameStatus,
-          roles: localGameState.roles,
-          initialized: true,
-          action: null,
-        }));
+        if (gameState.roles?.[playerId] && gameState.roles[playerId] !== role) {
+          setRole(gameState.roles[playerId]);
+          setLocalGameState((prev) => ({
+            ...prev,
+            roles: {
+              ...prev.roles,
+              [playerId]: gameState.roles[playerId],
+            },
+          }));
+        }
         break;
-
       case "waitingForOpponent":
-        console.log("Waiting for the other player...");
-        setLocalGameState((prev) => ({
-          ...prev,
-          action: null,
-        }));
-        break;
-
       case "results":
-        setLocalGameState((prev) => ({
-          ...prev,
-          gameStatus: localGameState.gameStatus,
-          winner: localGameState.winner,
-          sum: localGameState.sum,
-          roles: localGameState.roles,
-          numbers: localGameState.numbers,
-          action: null,
-        }));
-        console.log("Game results received.");
         break;
-
       default:
-        console.warn(
-          `Unhandled action: ${
-            localGameState?.gameAction
-          } with message: ${JSON.stringify(localGameState)}`
-        );
+        console.warn(`Unhandled gameAction: ${gameState.gameAction}`);
     }
-  }, [
-    localGameState.gameAction,
-    localGameState.roles,
-    gameId,
-    playerId,
-    sendGameMessage,
-  ]);
 
-  /**
-   * Handle number submission.
-   */
+    setLocalGameState((prev) => ({
+      ...prev,
+      ...gameState,
+    }));
+  }, [gameState?.gameAction]); // ✅ only run when gameAction changes
+
   const handleNumberSubmit = () => {
     if (number.trim() === "" || isNaN(number)) {
       console.warn("Invalid number submission");
@@ -145,91 +122,116 @@ const OddsAndEvens = ({
         number: parseInt(number, 10), // Ensure it's an integer
       },
     });
-
+    setSubmittedNumber(parseInt(number, 10)); // Store the submitted number
     setNumber(""); // Clear the input after submission
   };
 
   return (
-    // <div>
-    //   <h5>Odds and Evens Game</h5>
-    //   <p>Game ID: {gameId}</p>
-    //   <p>Role: {role || "Unknown"}</p>
-    //   <p>Number: {number || "None"}</p>
-    //   <input
-    //     type="number"
-    //     value={number}
-    //     onChange={(e) => setNumber(e.target.value)}
-    //     placeholder="Enter a number"
-    //   />
-    //   <button onClick={handleNumberSubmit}>Submit Number</button>
-    //   <div className="jsonMessage">
-    //     <JsonView
-    //       data={localGameState}
-    //       shouldExpandNode={(level) => level === 0}
-    //       style={{ fontSize: "14px", lineHeight: "1.2" }}
-    //     />
-    //   </div>
-    //   <button
-    //     onClick={() =>
-    //       sendGameMessage({
-    //         payload: {
-    //           type: "game",
-    //           action: "endGame",
-    //           playerId,
-    //           gameId: gameId,
-    //         },
-    //       })
-    //     }
-    //   >
-    //     Kill Game
-    //   </button>
-    // </div>
-    <div className="p-4 border rounded shadow-md max-w-md mx-auto space-y-3">
-      <h5 className="text-lg font-bold">Odds and Evens</h5>
-      <p>
-        <strong>Game ID:</strong> {gameId}
-      </p>
-      <p>
-        <strong>Your Role:</strong> {role || "Loading..."}
-      </p>
+    <div className="p-4 border rounded shadow-md w-full max-w-4xl mx-auto space-y-3">
+      <div>
+        <h5 className="text-lg font-bold">Odds and Evens</h5>
 
-      <input
-        type="number"
-        value={number}
-        onChange={(e) => setNumber(e.target.value)}
-        placeholder="Enter a number"
-        className="border rounded px-2 py-1 w-full"
-      />
-      <button
-        onClick={handleNumberSubmit}
-        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-      >
-        Submit Number
-      </button>
+        <p>
+          <strong>Game ID:</strong> {gameId}
+        </p>
+        <p>
+          <strong>Your Role:</strong> {role || "Loading..."}
+        </p>
 
-      <div className="jsonMessage border rounded p-2 bg-gray-100">
-        <JsonView
-          data={localGameState}
-          shouldExpandNode={(level) => level === 0}
-          style={{ fontSize: "14px", lineHeight: "1.2" }}
-        />
+        {(localGameState.numbers?.[playerId] !== undefined ||
+          submittedNumber !== null) && (
+          <p className="text-sm text-blue-700 font-medium">
+            You submitted:{" "}
+            <strong>
+              {localGameState.numbers[playerId] !== undefined
+                ? localGameState.numbers[playerId]
+                : submittedNumber}
+            </strong>
+          </p>
+        )}
+
+        {localGameState.gameStatus === "complete" && (
+          <div className="bg-white rounded shadow p-3 space-y-2">
+            <p className="text-green-600 font-bold">
+              Winner:{" "}
+              {localGameState.winner === playerId
+                ? "You"
+                : localGameState.winner}
+            </p>
+            <p className="text-red-500 font-medium">
+              Loser:{" "}
+              {localGameState.loser === playerId ? "You" : localGameState.loser}
+            </p>
+            <p className="text-gray-700">
+              Sum of Numbers: <strong>{localGameState.sum}</strong>
+            </p>
+            <div>
+              <p className="">Numbers Submitted:</p>
+              <ul className="text-sm">
+                {Object.entries(localGameState.numbers || {}).map(
+                  ([id, num]) => (
+                    <li key={id}>
+                      {id === playerId ? "You" : id}: {num}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3">
+          <input
+            type="number"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="Enter a number"
+            className="border rounded px-2 py-1 w-full"
+          />
+          <button
+            onClick={handleNumberSubmit}
+            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 mt-2 "
+          >
+            Submit Number
+          </button>
+
+          <button
+            onClick={() =>
+              sendGameMessage({
+                payload: {
+                  type: "game",
+                  action: "endGame",
+                  playerId,
+                  gameId,
+                },
+              })
+            }
+            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 ms-2"
+          >
+            Kill Game
+          </button>
+        </div>
       </div>
 
-      <button
-        onClick={() =>
-          sendGameMessage({
-            payload: {
-              type: "game",
-              action: "endGame",
-              playerId,
-              gameId,
-            },
-          })
-        }
-        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-      >
-        Kill Game
-      </button>
+      <div className="d-flex flex-row justify-content-center align-items-start w-100 gap-2 mt-3">
+        <div className="jsonMessage border rounded p-2 bg-gray-100">
+          GameState (input from gameConsole)
+          <JsonView
+            data={gameState}
+            shouldExpandNode={(level) => level === 0}
+            style={{ fontSize: "14px", lineHeight: "1.2" }}
+          />
+        </div>
+
+        <div className="jsonMessage border rounded p-2 bg-gray-100 ">
+          LocalState (Game Display)
+          <JsonView
+            data={localGameState}
+            shouldExpandNode={(level) => level === 0}
+            style={{ fontSize: "14px", lineHeight: "1.2" }}
+          />
+        </div>
+      </div>
     </div>
   );
 };

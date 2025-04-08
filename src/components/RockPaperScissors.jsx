@@ -1,158 +1,171 @@
 import React, { useEffect, useState } from "react";
-import { use } from "react";
+import { JsonView } from "react-json-view-lite";
 
-const RockPaperScissors = ({ sendMessage, playerId, gameState }) => {
+const RockPaperScissors = ({
+  sendGameMessage,
+  playerId,
+  gameState,
+  gameId,
+}) => {
   const [localGameState, setLocalGameState] = useState({
-    status: "started",
+    gameStatus: "waiting",
     winner: null,
     loser: null,
-    choices: {}, // Ensure it's an empty object
+    choices: {},
     draw: false,
   });
 
-  // Handle game actions received from the server
+  const [pendingChoice, setPendingChoice] = useState(null);
+
   useEffect(() => {
-    console.log("Received game action");
-    // const gameAction = gameState?.gameAction;
-    const { action: gameAction = "", payload = {} } = gameState || {};
-
-    if (!gameAction) {
-      console.warn("No gameAction received.");
-      return;
-    }
-
-    // console.log("RPS message received:", gameAction);
-    // useEffect(() => {
-    //   setLocalGameState((prevState) => ({
-    //     ...prevState,
-    //     status: "started",
-    //   }));
-    // }, []);
-
-    switch (gameAction) {
-      // case "start":
-      //   console.log("Game started. Players can now choose choices.");
-      //   setLocalGameState((prevState) => ({
-      //     ...prevState,
-      //     status: "started",
-      //   }));
-      //   break;
-
-      case "choiceMade":
-        console.log("Choice recorded.");
-        break;
-
-      case "winner":
-        console.log("Game finished. Winner determined.");
-        // Example structure for gameState: include winner, loser, choices, or flags
-        setLocalGameState((prevState) => ({
-          ...prevState,
-          status: "complete",
-          winner: payload.winner,
-          loser: payload.loser,
-          choices: payload.choices,
-        }));
+    if (!gameState || !gameState.gameAction) return;
+    console.log("gameState.gameAction fired", gameState);
+    switch (gameState.gameAction) {
+      case "waiting":
+      case "results":
+        setLocalGameState(
+          (prev) => (
+            console.log("results", gameState),
+            {
+              ...prev,
+              ...gameState,
+            }
+          )
+        );
         break;
 
       case "draw":
-        console.log("Game ended in a draw.");
-        setLocalGameState((prevState) => ({
-          ...prevState,
-          status: "complete",
-          draw: true,
-        }));
+        setLocalGameState(
+          (prev) => (
+            console.log("draw", gameState),
+            {
+              ...prev,
+              ...gameState,
+            }
+          )
+        );
+        setPendingChoice(null); // clear pending when server acknowledges
         break;
-
-      case "reset":
-        console.log("Game reset.");
-        // setLocalGameState({
-        //   status: "waiting",
-        //   winner: null,
-        //   loser: null,
-        //   choices: {},
-        //   draw: false,
-        // });
-        break;
-
       default:
-        console.warn(`Unhandled gameAction: ${gameAction}`);
         break;
     }
   }, [gameState]);
 
-  const handleMakeChoice = (gameAction) => {
-    setLocalGameState((prevState) => ({
-      ...prevState,
-      status: "waiting",
-    }));
-    const message = {
-      type: "game",
-      action: "gameAction",
+  const makeChoice = (choice) => {
+    setPendingChoice(choice);
+    sendGameMessage({
       payload: {
-        game: "rock-paper-scissors", // Game name
-        gameAction, // Player's choice
-        playerId, // Player's public
-        gameId: gameState.gameId, // Game ID
+        type: "game",
+        action: "gameAction",
+        gameType: "rock-paper-scissors",
+        gameAction: choice,
+        playerId,
+        gameId,
       },
-    };
-
-    console.log("Sending choice:", message);
-    sendMessage(message);
+    });
   };
 
-  return (
-    <div>
-      <h2>Rock Paper Scissors</h2>
+  const currentChoice = localGameState.choices[playerId] || pendingChoice;
 
-      {/* Game Status: In-Progress */}
-      {localGameState.status === "waiting" && (
-        <p> Waiting for opponent to Choose </p>
-      )}
-      {localGameState.status === "started" && (
-        <div>
-          <h3>Select Your Choice</h3>
-          <button onClick={() => handleMakeChoice("rock")}>Rock</button>
-          <button onClick={() => handleMakeChoice("paper")}>Paper</button>
-          <button onClick={() => handleMakeChoice("scissors")}>Scissors</button>
+  return (
+    <div className="flex flex-col justify-center items-center gap-4 mt-4">
+      {/* <div className="text-sm text-black-300 break-words max-w-full">
+        {Object.entries(localGameState).map(([key, value]) => (
+          <div key={key}>
+            <strong>{key}:</strong>{" "}
+            {typeof value === "object" ? JSON.stringify(value) : String(value)}
+          </div>
+        ))}
+      </div> */}
+
+      {/* --- CHOICE BUTTON OR SELECTED CHOICE --- */}
+      <div className="flex justify-center gap-4">
+        {currentChoice ? (
+          <button
+            className="ring-4 ring-yellow-400 text-white font-semibold py-2 px-4 rounded shadow cursor-default bg-gray-600"
+            disabled
+          >
+            {currentChoice === "rock" && "✊ Rock"}
+            {currentChoice === "paper" && "✋ Paper"}
+            {currentChoice === "scissors" && "✌️ Scissors"}
+          </button>
+        ) : (
+          ["rock", "paper", "scissors"].map((choice) => {
+            const baseColor =
+              choice === "rock" ? "red" : choice === "paper" ? "green" : "blue";
+
+            return (
+              <button
+                key={choice}
+                onClick={() => makeChoice(choice)}
+                className={`bg-${baseColor}-500 hover:bg-${baseColor}-600 text-white font-semibold py-2 px-4 rounded shadow`}
+              >
+                {choice === "rock" && "✊ Rock"}
+                {choice === "paper" && "✋ Paper"}
+                {choice === "scissors" && "✌️ Scissors"}
+              </button>
+            );
+          })
+        )}
+      </div>
+      {/* --- WINNER/LOSER --- */}
+      {console.log("localGameState", localGameState)}
+      {localGameState.gameStatus === "complete" && (
+        <div className="text-center mt-4 space-y-2">
+          {localGameState.draw ? (
+            <p className="text-yellow-500 font-bold text-lg">It's a draw!</p>
+          ) : (
+            <>
+              <p className="text-green-500 font-bold text-lg">
+                Winner:{" "}
+                {localGameState.winner === playerId
+                  ? "You"
+                  : localGameState.winner}
+              </p>
+              <p className="text-red-500 font-medium">
+                Loser:{" "}
+                {localGameState.loser === playerId
+                  ? "You"
+                  : localGameState.loser}
+              </p>
+            </>
+          )}
+
+          {/* --- CHOICES --- */}
+          <div className="mt-2">
+            <h4 className="font-semibold text-white">Choices:</h4>
+            <ul className="text-sm text-black-300">
+              {Object.entries(localGameState.choices || {}).map(
+                ([id, choice]) => (
+                  <li key={id}>
+                    {id === playerId ? "You" : id}: {choice}
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
         </div>
       )}
-      {/* Game Status: Complete */}
-      {localGameState.status === "complete" && (
-        <>
-          {localGameState.draw ? (
-            <p>The game ended in a draw!</p>
-          ) : (
-            <p>
-              Winner: {localGameState.winner}, Loser: {localGameState.loser}
-            </p>
-          )}
-          <h3>Choices</h3>
-          <ul>
-            {localGameState.choices &&
-            Object.keys(localGameState.choices).length > 0 ? (
-              Object.entries(localGameState.choices).map(([player, choice]) => (
-                <li key={player}>
-                  {player}: {choice}
-                </li>
-              ))
-            ) : (
-              <li>No choices made yet.</li>
-            )}
-          </ul>
-        </>
-      )}
-      {/* Player List */}
-      {/* Player List */}
-      <h3>Players</h3>
-      <ul>
-        {gameState.players?.length > 0 ? (
-          gameState.players.map((player, index) => (
-            <li key={index}>{player}</li>
-          ))
-        ) : (
-          <li>No players in the game yet.</li>
-        )}
-      </ul>
+
+      <div className="d-flex flex-row justify-content-center align-items-start w-100 gap-2 mt-3">
+        <div className="jsonMessage border rounded p-2 bg-gray-100">
+          GameState (input from gameConsole)
+          <JsonView
+            data={gameState}
+            shouldExpandNode={(level) => level === 0}
+            style={{ fontSize: "14px", lineHeight: "1.2" }}
+          />
+        </div>
+
+        <div className="jsonMessage border rounded p-2 bg-gray-100 ">
+          LocalState (Game Display)
+          <JsonView
+            data={localGameState}
+            shouldExpandNode={(level) => level === 0}
+            style={{ fontSize: "14px", lineHeight: "1.2" }}
+          />
+        </div>
+      </div>
     </div>
   );
 };
