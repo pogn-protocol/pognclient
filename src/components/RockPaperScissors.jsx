@@ -111,7 +111,7 @@ const RockPaperScissors = ({
       {/* --- WINNER/LOSER --- */}
       {console.log("localGameState", localGameState)}
       {localGameState.gameStatus === "complete" && (
-        <div className="text-center mt-4 space-y-2">
+        <div className="text-center mt-4 space-y-2 break-words max-w-full">
           {localGameState.draw ? (
             <p className="text-yellow-500 font-bold text-lg">It's a draw!</p>
           ) : (
