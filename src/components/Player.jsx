@@ -3,25 +3,25 @@ import { generatePrivateKey, getPublicKey } from "nostr-tools";
 
 const Player = ({ setPlayerId }) => {
   const [privateKey, setPrivateKey] = useState(() => {
-    const storedKey = localStorage.getItem("nostrPrivateKey");
+    const storedKey = sessionStorage.getItem("nostrPrivateKey");
     if (storedKey) {
-      console.log("🔑 Loaded private key from localStorage.");
+      console.log("🔑 Loaded private key from sessionStorage.");
       return storedKey;
     }
     const newKey = generatePrivateKey();
-    localStorage.setItem("nostrPrivateKey", newKey);
+    sessionStorage.setItem("nostrPrivateKey", newKey);
     console.log("🆕 Generated and stored new private key.");
     return newKey;
   });
 
   const [playerId, setPlayerIdState] = useState(() => {
-    const storedId = localStorage.getItem("nostrPublicKey");
+    const storedId = sessionStorage.getItem("nostrPublicKey");
     if (storedId) {
-      console.log("🧠 Loaded playerId from localStorage.");
+      console.log("🧠 Loaded playerId from sessionStorage.");
       return storedId;
     }
     const derived = getPublicKey(privateKey);
-    localStorage.setItem("nostrPublicKey", derived);
+    sessionStorage.setItem("nostrPublicKey", derived);
     return derived;
   });
 
@@ -34,7 +34,7 @@ const Player = ({ setPlayerId }) => {
   const handleChange = (e) => {
     const newId = e.target.value.trim();
     setPlayerIdState(newId);
-    localStorage.setItem("nostrPublicKey", newId);
+    sessionStorage.setItem("nostrPublicKey", newId);
     if (setPlayerId) setPlayerId(newId);
   };
 
@@ -50,7 +50,7 @@ const Player = ({ setPlayerId }) => {
         style={{ fontFamily: "monospace", fontSize: "0.9em" }}
       />
       <div className="form-text">
-        Your public key will be stored in <code>localStorage</code>.
+        Your public key will be stored in <code>sessionStorage</code>.
         Auto-generated if empty.
       </div>
     </div>

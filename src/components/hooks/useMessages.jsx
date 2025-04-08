@@ -37,6 +37,7 @@ export default function useMessages(
 
   const handleMessage = useCallback(
     (id, message) => {
+      console.log(`📩 Message received from ${id}`, message);
       if (!message?.payload) return;
 
       setMessages((prev) => ({

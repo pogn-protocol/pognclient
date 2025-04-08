@@ -9,25 +9,20 @@ export function verifyLobbyMessage(message, truePlayerId, trueLobbyId) {
     return false;
   }
   const { payload } = message;
-  console.log(payload);
-  const { action, gameId, playerId, lobbyId } = payload;
+  console.log("Verifying payload", payload);
+  const { action, playerId, lobbyId } = payload;
 
   if (!action) {
-    console.warn("No action in payload:", payload);
+    console.warn("No action in payload:", payload, message);
     return false;
   }
 
   if (playerId !== truePlayerId) {
-    console.warn("PlayerId mismatch:", playerId, truePlayerId);
+    console.warn("PlayerId mismatch:", playerId, truePlayerId, message);
   }
 
   if (lobbyId !== trueLobbyId) {
-    console.warn("LobbyId mismatch:", lobbyId, trueLobbyId);
-  }
-
-  if (!gameId) {
-    console.warn("Missing gameId in payload:", payload);
-    // return false;
+    console.warn("LobbyId mismatch:", lobbyId, trueLobbyId, message);
   }
 
   return true;
@@ -50,17 +45,17 @@ export function verifyGameMessage(message) {
   const { type, action, gameId } = payload;
 
   if (type !== "game") {
-    console.warn("❌ Game message has wrong type:", type);
+    console.warn("❌ Game message has wrong type:", type, message);
     return false;
   }
 
   if (!action) {
-    console.warn("❌ No action in game payload:", payload);
+    console.warn("❌ No action in game payload:", payload, message);
     return false;
   }
 
   if (!gameId) {
-    console.warn("❌ No gameId in game payload:", payload);
+    console.warn("❌ No gameId in game payload:", payload, message);
     return false;
   }
 

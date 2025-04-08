@@ -51,8 +51,6 @@ const OddsAndEvens = ({
    * Initializes the game by fetching roles if not already assigned.
    */
   useEffect(() => {
-    console.log("gameState.action fired", localGameState);
-
     // If the game state is not initialized, fetch roles.
     if (!localGameState.initialized) {
       console.log(
@@ -74,11 +72,12 @@ const OddsAndEvens = ({
 
       return;
     }
-    if (localGameState.action == null) {
-      console.log("No action received.");
-      return;
-    }
-    switch (localGameState?.action) {
+
+    if (!localGameState || !localGameState.gameAction) return;
+
+    console.log("gameState.gameAction fired", localGameState);
+
+    switch (localGameState?.gameAction) {
       case "rolesAssigned":
         console.log(gameId, "Roles assigned:", localGameState.roles);
         setRole(localGameState.roles[playerId]);
@@ -115,12 +114,12 @@ const OddsAndEvens = ({
       default:
         console.warn(
           `Unhandled action: ${
-            localGameState?.action
+            localGameState?.gameAction
           } with message: ${JSON.stringify(localGameState)}`
         );
     }
   }, [
-    localGameState.action,
+    localGameState.gameAction,
     localGameState.roles,
     gameId,
     playerId,
@@ -151,25 +150,71 @@ const OddsAndEvens = ({
   };
 
   return (
-    <div>
-      <h5>Odds and Evens Game</h5>
-      <p>Game ID: {gameId}</p>
-      <p>Role: {role || "Unknown"}</p>
-      <p>Number: {number || "None"}</p>
+    // <div>
+    //   <h5>Odds and Evens Game</h5>
+    //   <p>Game ID: {gameId}</p>
+    //   <p>Role: {role || "Unknown"}</p>
+    //   <p>Number: {number || "None"}</p>
+    //   <input
+    //     type="number"
+    //     value={number}
+    //     onChange={(e) => setNumber(e.target.value)}
+    //     placeholder="Enter a number"
+    //   />
+    //   <button onClick={handleNumberSubmit}>Submit Number</button>
+    //   <div className="jsonMessage">
+    //     <JsonView
+    //       data={localGameState}
+    //       shouldExpandNode={(level) => level === 0}
+    //       style={{ fontSize: "14px", lineHeight: "1.2" }}
+    //     />
+    //   </div>
+    //   <button
+    //     onClick={() =>
+    //       sendGameMessage({
+    //         payload: {
+    //           type: "game",
+    //           action: "endGame",
+    //           playerId,
+    //           gameId: gameId,
+    //         },
+    //       })
+    //     }
+    //   >
+    //     Kill Game
+    //   </button>
+    // </div>
+    <div className="p-4 border rounded shadow-md max-w-md mx-auto space-y-3">
+      <h5 className="text-lg font-bold">Odds and Evens</h5>
+      <p>
+        <strong>Game ID:</strong> {gameId}
+      </p>
+      <p>
+        <strong>Your Role:</strong> {role || "Loading..."}
+      </p>
+
       <input
         type="number"
         value={number}
         onChange={(e) => setNumber(e.target.value)}
         placeholder="Enter a number"
+        className="border rounded px-2 py-1 w-full"
       />
-      <button onClick={handleNumberSubmit}>Submit Number</button>
-      <div className="jsonMessage">
+      <button
+        onClick={handleNumberSubmit}
+        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+      >
+        Submit Number
+      </button>
+
+      <div className="jsonMessage border rounded p-2 bg-gray-100">
         <JsonView
           data={localGameState}
           shouldExpandNode={(level) => level === 0}
           style={{ fontSize: "14px", lineHeight: "1.2" }}
         />
       </div>
+
       <button
         onClick={() =>
           sendGameMessage({
@@ -177,10 +222,11 @@ const OddsAndEvens = ({
               type: "game",
               action: "endGame",
               playerId,
-              gameId: gameId,
+              gameId,
             },
           })
         }
+        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
       >
         Kill Game
       </button>

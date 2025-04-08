@@ -14,7 +14,7 @@ const RockPaperScissors = ({ sendMessage, playerId, gameState }) => {
   useEffect(() => {
     console.log("Received game action");
     // const gameAction = gameState?.gameAction;
-    const { gameAction = "", payload = {} } = gameState || {};
+    const { action: gameAction = "", payload = {} } = gameState || {};
 
     if (!gameAction) {
       console.warn("No gameAction received.");

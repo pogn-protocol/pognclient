@@ -41,12 +41,14 @@ const GameConsole = ({
       //console.warn("Skipping game message verification: empty message");
       return;
     }
-    verifyGameMessage(message, playerId, gameId);
-
-    if (!verifyGameMessage(message)) return;
 
     const { payload } = message;
     const { action, gameId } = payload;
+
+    if (!verifyGameMessage(message, playerId, gameId)) {
+      return;
+    }
+
     switch (action) {
       case "gameAction":
       case "results":
@@ -348,6 +350,11 @@ const GameConsole = ({
                   {/* Received Messages */}
                   <div>
                     <h6>Received</h6>
+                    {console.log(
+                      "🧾 All gameMessages keys:",
+                      Object.keys(gameMessages)
+                    )}
+                    {console.log("🧾 Current gameId selected:", gameId)}
                     {gameMessages[gameId]?.length > 1 && (
                       <details style={{ marginBottom: "8px" }}>
                         <summary>

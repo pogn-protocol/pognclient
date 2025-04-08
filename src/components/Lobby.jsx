@@ -508,7 +508,7 @@ const Lobby = ({
 
               <button
                 onClick={handleListGames}
-                className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                className="px-4 py-2 rounded bg-green-600 hover:bg-blue-700 text-white font-semibold"
               >
                 Refresh Games
               </button>
