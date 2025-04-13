@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import RockPaperScissors from "./RockPaperScissors";
 import OddsAndEvens from "./oddsAndEvens";
+import TicTacToe from "./ticTacToe";
 import {
   JsonView,
   allExpanded,
@@ -27,6 +28,9 @@ const GameConsole = ({
   const [gameMessagesSent, setGameMessagesSent] = useState({});
 
   const sendGameMessage = (gameId, message) => {
+    console.log("Sending game message gameId:", gameId, message);
+    message.payload.type = "game";
+    message.relayId = gameId;
     setGameMessagesSent((prev) => {
       const updated = { ...prev };
       updated[gameId] = [...(updated[gameId] || []), message];
@@ -123,21 +127,21 @@ const GameConsole = ({
         const gamesRefreshed = [];
 
         // Remove all games from gameStates where game.lobbyId matches one of those
-        setGameStates((prevGameStates) => {
-          const updated = new Map();
-          for (const [gameId, gameState] of prevGameStates.entries()) {
-            if (!lobbyIdsToInit.includes(gameState.lobbyId)) {
-              console.log("Not refreshing gameState", gameId, gameState);
-              updated.set(gameId, gameState);
-            } else {
-              console.log(
-                `🧹 Refreshing gameState and connections for game ${gameId} from gameState ${gameState}`
-              );
-              gamesRefreshed.push(gameId); // Track this game as refreshed
-            }
-          }
-          return updated;
-        });
+        // setGameStates((prevGameStates) => {
+        //   const updated = new Map();
+        //   for (const [gameId, gameState] of prevGameStates.entries()) {
+        //     if (!lobbyIdsToInit.includes(gameState.lobbyId)) {
+        //       console.log("Not refreshing gameState", gameId, gameState);
+        //       updated.set(gameId, gameState);
+        //     } else {
+        //       console.log(
+        //         `🧹 Refreshing gameState and connections for game ${gameId} from gameState ${gameState}`
+        //       );
+        //       gamesRefreshed.push(gameId); // Track this game as refreshed
+        //     }
+        //   }
+        //   return updated;
+        // });
 
         // Remove processed games from gamesToInit
         setGamesToInit((prev) => {
@@ -177,21 +181,49 @@ const GameConsole = ({
     }
   }, [gameConnections, gamesToInit]);
 
+  // const initNewGames = (games) => {
+  //   console.log("Initializing games", games);
+  //   console.log("gameConnections", gameConnections);
+  //   //delet each game.lobbyId from gameStates.lobbyId
+
+  //   games.forEach((game) => {
+  //     const gameId = game.gameId;
+  //     const connection = gameConnections.get(gameId);
+  //     if (connection && connection.readyState === 1) {
+  //       console.log("Game to Init:", game);
+  //       updateGameState(gameId, game); // ✅ Centralized update
+  //       console.log(`🗺️ Game ${gameId} stored in gameMap.`);
+  //     } else {
+  //       console.warn(`❌ Connection not ready for game ID: ${gameId}`);
+  //     }
+  //   });
+  // };
+
   const initNewGames = (games) => {
     console.log("Initializing games", games);
-    console.log("gameConnections", gameConnections);
-    //delet each game.lobbyId from gameStates.lobbyId
 
-    games.forEach((game) => {
-      const gameId = game.gameId;
-      const connection = gameConnections.get(gameId);
-      if (connection && connection.readyState === 1) {
-        console.log("Game to Init:", game);
-        updateGameState(gameId, game); // ✅ Centralized update
-        console.log(`🗺️ Game ${gameId} stored in gameMap.`);
-      } else {
-        console.warn(`❌ Connection not ready for game ID: ${gameId}`);
-      }
+    setGameStates((prevStates) => {
+      const updated = new Map(prevStates);
+
+      games.forEach((game) => {
+        const gameId = game.gameId;
+        const connection = gameConnections.get(gameId);
+
+        if (!connection || connection.readyState !== 1) {
+          console.warn(`❌ Skipping ${gameId}: connection not ready`);
+          return;
+        }
+
+        if (updated.has(gameId)) {
+          console.log(`🛑 Skipping ${gameId}: already in gameStates`);
+          return;
+        }
+
+        console.log(`✅ Initializing new gameState for ${gameId}`);
+        updated.set(gameId, game);
+      });
+
+      return updated;
     });
   };
 
@@ -207,6 +239,32 @@ const GameConsole = ({
       return updatedMap;
     });
   };
+
+  // const updateGameState = (gameId, newState) => {
+  //   setGameStates((prevStates) => {
+  //     const updatedMap = new Map(prevStates);
+  //     const currentGameState = updatedMap.get(gameId) || {};
+
+  //     const mergedState = { ...currentGameState, ...newState };
+
+  //     const isSame = Object.keys(mergedState).every(
+  //       (key) =>
+  //         currentGameState[key] === mergedState[key] ||
+  //         JSON.stringify(currentGameState[key]) ===
+  //           JSON.stringify(mergedState[key])
+  //     );
+
+  //     if (isSame) {
+  //       console.log("🔁 Skipping update — state unchanged");
+  //       return prevStates;
+  //     }
+
+  //     updatedMap.set(gameId, mergedState);
+  //     console.log("✅ Updated gameStates Map:", updatedMap);
+
+  //     return updatedMap;
+  //   });
+  // };
 
   const disconnectGame = (gameId) => {
     if (!gameId || !gameConnections.has(gameId)) {
@@ -240,6 +298,8 @@ const GameConsole = ({
         return <RockPaperScissors {...sharedProps} />;
       case "odds-and-evens":
         return <OddsAndEvens {...sharedProps} />;
+      case "tic-tac-toe":
+        return <TicTacToe {...sharedProps} />;
       default:
         return <p>Game type not supported.</p>;
     }

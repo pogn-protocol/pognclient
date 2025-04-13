@@ -15,6 +15,7 @@ export default function useMessages(
 
   const handleSendMessage = useCallback(
     (id, message) => {
+      console.log(`📤 Sending message to ${id}`, message);
       const connection = connections.get(id);
       if (!connection) {
         console.warn(`⚠️ Connection ${id} not found`);
@@ -25,9 +26,14 @@ export default function useMessages(
         return;
       }
 
+      if (!message?.payload) {
+        console.warn(`⚠️ Message payload is missing`, message);
+        return;
+      }
+
       message.uuid = uuidv4();
       message.relayId = id;
-      message.payload.player = playerId;
+      message.payload.playerId = playerId;
 
       console.log(`🚀 Sending message to ${id}`, message);
       sendMessageToUrl(id, message);

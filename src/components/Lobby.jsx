@@ -23,7 +23,7 @@ const Lobby = ({
   const [selectedGameType, setSelectedGameType] = useState("odds-and-evens");
   const [selectedGamestate, setSelectedGamestate] = useState({
     players: [],
-    lobbyStatus: "ready-to-join",
+    lobbyStatus: "",
     maxPlayers: 0,
     minPlayers: 0,
     gameAction: "",
@@ -68,65 +68,9 @@ const Lobby = ({
     }
   }, [playerId]);
 
-  // useEffect(() => {
-  //   console.log("Lobby ID changed:", lobbyId);
-  //   if (!lobbyId) {
-  //     console.warn("Lobby ID is not defined. Cannot proceed.");
-  //     return;
-  //   }
-  //   if (!signedIntoLobby) {
-  //     const connection = lobbyConnections.get(lobbyId);
-  //     console.log("Connection", connection);
-  //     if (connection?.readyState === 1) {
-  //       console.log(
-  //         `✅ Lobby ${lobbyId} connection established. Sending login...`
-  //       );
-  //       sendLobbyMessage({
-  //         payload: {
-  //           type: "lobby",
-  //           action: "login",
-  //           lobbyId: lobbyId,
-  //           playerId,
-  //         },
-  //       });
-  //       setSignedIntoLobby(true);
-  //     } else {
-  //       console.warn(`❌ Lobby ${lobbyId} connection not ready yet.`);
-  //     }
-  //   }
-  // }, [signedIntoLobby, lobbyId]);
-
   useEffect(() => {
     console.log("Lobby Message Received by Lobby:", message);
     setLobbyMessagesReceived((prev) => [...prev, message]);
-
-    // if (!message || Object.keys(message).length === 0) {
-    //   console.warn("Invalid message object:", message);
-    //   return;
-    // }
-
-    // console.log("Processing Lobby message:", message);
-    // const { payload } = message;
-    // if (!payload) {
-    //   console.warn("No payload in message:", message);
-    //   return;
-    // }
-    // const { type, action } = payload;
-    // if (type !== "lobby") {
-    //   console.warn("Message sent to lobby not of type lobby:", type);
-    //   return;
-    // }
-    // if (!action) {
-    //   console.warn("No action in payload:", payload);
-    //   return;
-    // }
-    // const gameId = payload?.gameId;
-    // if (playerId !== payload?.playerId) {
-    //   console.warn("PlayerId mismatch:", playerId, payload?.playerId);
-    // }
-    // if (lobbyId !== payload?.lobbyId) {
-    //   console.warn("LobbyId mismatch:", lobbyId, payload?.lobbyId);
-    // }
 
     if (!verifyLobbyMessage(message, playerId, lobbyId)) return;
     const { payload } = message;
@@ -142,10 +86,6 @@ const Lobby = ({
       "Payload",
       payload
     );
-    // if ((!gameId, !playerId, !lobbyId)) {
-    //   console.warn("Missing gameId, playerId, or lobbyId in payload:", payload);
-    //   return;
-    // }
 
     switch (action) {
       case "refreshLobby":
