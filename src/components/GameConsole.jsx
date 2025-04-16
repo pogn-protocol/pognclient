@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import RockPaperScissors from "./RockPaperScissors";
-import OddsAndEvens from "./oddsAndEvens";
-import TicTacToe from "./ticTacToe";
+import OddsAndEvens from "./OddsAndEvens";
+import TicTacToe from "./TicTacToe";
 import {
   JsonView,
   allExpanded,
