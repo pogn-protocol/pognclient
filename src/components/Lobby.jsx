@@ -173,19 +173,6 @@ const Lobby = ({
     }
   };
 
-  const handleStartGame = () => {
-    console.log("Starting game...", selectedGamestate.gameId);
-    sendLobbyMessage({
-      payload: {
-        type: "lobby",
-        lobbyId: lobbyId,
-        action: "startGame",
-        playerId,
-        gameId: selectedGamestate.gameId,
-      },
-    });
-  };
-
   const handleListGames = () => {
     console.log(`${playerId} listing games...`);
     sendLobbyMessage({
@@ -477,76 +464,6 @@ const Lobby = ({
                 {hasJoined ? "Joined" : isJoining ? "Joining..." : "Join Game"}
               </button>
             </div>
-
-            {/* <div className="d-grid">
-              <button className="btn btn-primary" onClick={handleCreateGame}>
-                Create New Game
-              </button>
-
-              <button className="btn btn-primary" onClick={handleListGames}>
-                Refresh Games
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleJoinGame}
-                disabled={
-                  hasJoined ||
-                  isJoining ||
-                  lobbyPlayers.length === 0 ||
-                  !selectedGamestate.gameId ||
-                  selectedGamestate.players.length >=
-                    selectedGamestate.instance.maxPlayers
-                }
-              >
-                {hasJoined
-                  ? "Joined" // If the player has joined
-                  : isJoining
-                  ? "Joining..." // If the player is in the process of joining
-                  : "Join Game"}{" "}
-              </button>
-            </div> */}
-
-            {/* {hasJoined &&
-              selectedGameId &&
-              (selectedGamestate.lobbyStatus === "canStart" ||
-                selectedGamestate.lobbyStatus === "readyToStart") && (
-                <button
-                  onClick={handleStartGame}
-                  disabled={
-                    Object.keys(
-                      lobbyGames.find((game) => game.gameId === selectedGameId)
-                        ?.players || {}
-                    ).length < 2 // Disable if less than 2 players
-                  }
-                  style={{
-                    marginTop: "10px",
-                    backgroundColor:
-                      Object.keys(
-                        lobbyGames.find(
-                          (game) => game.gameId === selectedGameId
-                        )?.players || {}
-                      ).length >= 2
-                        ? "#28a745" // Green for enabled
-                        : "#ccc", // Gray for disabled
-                    cursor:
-                      Object.keys(
-                        lobbyGames.find(
-                          (game) => game.gameId === selectedGameId
-                        )?.players || {}
-                      ).length >= 2
-                        ? "pointer"
-                        : "not-allowed", // Pointer for clickable, not-allowed otherwise
-                  }}
-                >
-                  {Object.keys(
-                    lobbyGames.find((game) => game.gameId === selectedGameId)
-                      ?.players || {}
-                  ).length >= 2
-                    ? "Start Game" // Show "Start Game" if 2+ players
-                    : "Waiting for Players"}{" "}
-                </button>
-              )} */}
-
             <div className="lobbyGames">
               <div className="selectedGameState jsonMessage">
                 <h5>Selected Game State</h5>

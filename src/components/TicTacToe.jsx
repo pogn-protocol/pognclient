@@ -1,98 +1,119 @@
-import React from "react";
-import {
-  useLocalGameState,
-  useRoleRequester,
-  GameResultDisplay,
-  GameJsonDebug,
-} from "../utils/gameUtils.jsx";
+import React, { useState } from "react";
 
 const TicTacToe = ({ sendGameMessage, playerId, gameState, gameId }) => {
-  const [localGameState, setLocalGameState] = useLocalGameState(
-    gameId,
-    gameState
-  );
-  const role = useRoleRequester(
-    localGameState,
-    playerId,
-    gameId,
-    sendGameMessage
-  );
+  const [isGameStarted, setGameStarted] = React.useState(false);
+  const [isPlayerReady, setPlayerReady] = React.useState(false);
 
-  const handleCellClick = (index) => {
-    console.log("Cell clicked:", index);
-    console.log("Current game state:", localGameState);
-    console.log("Current player ID:", playerId);
-    console.log("Current role:", role);
-    console.log("Current game ID:", gameId);
-    if (localGameState.gameStatus !== "in-progress") return;
-    // if (localGameState.currentTurn !== playerId) return;
-    if (localGameState.currentTurn !== playerId) return;
+  console.log("[GameComponent] render — playerId:", playerId);
+  console.log("[GameComponent] gameState:", gameState);
+  console.log("[GameComponent] gameAction:", gameState?.gameAction);
 
-    if (localGameState.board?.[index] !== null) return;
+  React.useEffect(() => {
+    if (!isGameStarted && gameState?.gameAction === "gameStarted") {
+      console.log("[GameComponent] Setting isGameStarted = true");
+      setGameStarted(true);
+      setPlayerReady(true); // lock this too, if needed
+    }
 
+    if (!isPlayerReady && gameState?.gameAction === "playerReady") {
+      const readyStates = gameState?.readyStates || {};
+      if (readyStates[playerId]) {
+        console.log("[GameComponent] Setting isPlayerReady = true");
+        setPlayerReady(true);
+      }
+    }
+  }, [gameState?.gameAction]);
+
+  const currentPlayer = playerId;
+  const board = gameState?.board || Array(9).fill(null);
+  const currentTurn = gameState?.currentTurn;
+  const winner = gameState?.winner;
+  const message = gameState?.message;
+  const roles = gameState?.roles || {};
+
+  console.log("[GameComponent] isGameStarted:", isGameStarted);
+  console.log("[GameComponent] isPlayerReady:", isPlayerReady);
+  console.log("[GameComponent] board:", board);
+  console.log("[GameComponent] currentTurn:", currentTurn);
+  console.log("[GameComponent] winner:", winner);
+
+  const handleClick = (index) => {
+    if (board[index]) {
+      console.log("[handleClick] Cell already taken at index:", index);
+      return;
+    }
+    if (winner) {
+      console.log("[handleClick] Game already has winner:", winner);
+      return;
+    }
+    if (currentTurn !== currentPlayer) {
+      console.log("[handleClick] Not your turn.");
+      return;
+    }
+
+    console.log("[handleClick] Sending move:", index);
     sendGameMessage({
-      payload: {
-        type: "game",
-        action: "gameAction",
-        gameAction: "makeMove",
-        playerId,
-        gameId,
-        index,
-      },
+      gameAction: "makeMove",
+      playerId,
+      gameId,
+      index,
+    });
+  };
+
+  const handleReady = () => {
+    console.log("[handleReady] Player clicked ready:", playerId);
+    sendGameMessage({
+      gameAction: "playerReady",
+      playerId,
+      gameId,
     });
   };
 
   return (
-    <div className="p-4 border rounded shadow-md w-full max-w-4xl mx-auto space-y-3">
-      <h5 className="text-lg font-bold">Tic Tac Toe</h5>
+    <div className="space-y-4">
+      <p className="font-bold text-lg text-blue-700">🎯 Player {playerId}</p>
 
-      <p>
-        <strong>Game ID:</strong> {gameId}
-      </p>
-      <p>
-        <strong>Your Role:</strong> {role || "Loading..."}
-      </p>
-      <p>
-        <strong>Current Turn:</strong>{" "}
-        {localGameState.roles?.[localGameState.currentTurn] || "..."}
-      </p>
-
-      <div className="grid grid-cols-3 gap-1 max-w-xs mx-auto">
-        {(localGameState.board || Array(9).fill(null)).map((cell, index) => (
-          <button
-            key={index}
-            className="w-20 h-20 text-2xl font-bold border rounded hover:bg-gray-100"
-            onClick={() => handleCellClick(index)}
-            disabled={
-              cell !== null ||
-              localGameState.currentTurn !== playerId ||
-              localGameState.gameStatus !== "in-progress"
-            }
-          >
-            {cell}
-          </button>
-        ))}
-      </div>
-
-      <GameResultDisplay localGameState={localGameState} playerId={playerId} />
-
-      <button
-        onClick={() =>
-          sendGameMessage({
-            payload: {
-              type: "game",
-              action: "endGame",
-              playerId,
-              gameId,
-            },
-          })
-        }
-        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 mt-2"
-      >
-        End Game
-      </button>
-
-      <GameJsonDebug rawState={gameState} localGameState={localGameState} />
+      {!isGameStarted ? (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600 italic">
+            Waiting for all players to be ready...
+          </p>
+          {!isPlayerReady ? (
+            <button
+              onClick={handleReady}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              ✅ Ready
+            </button>
+          ) : (
+            <p className="text-green-600 font-semibold">✅ You are ready</p>
+          )}
+        </div>
+      ) : (
+        <>
+          <p className="text-sm">
+            Current Turn:{" "}
+            <span className="font-bold text-indigo-600">{currentTurn}</span>
+          </p>
+          {winner && (
+            <p className="text-green-600 font-semibold">
+              🏆 Winner: Player {winner}
+            </p>
+          )}
+          {message && <p className="text-sm text-gray-500 italic">{message}</p>}
+          <div className="grid grid-cols-3 gap-2 w-48 mx-auto">
+            {board.map((cell, i) => (
+              <button
+                key={i}
+                onClick={() => handleClick(i)}
+                className="w-12 h-12 text-xl font-bold border border-gray-400 rounded bg-white"
+              >
+                {cell}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

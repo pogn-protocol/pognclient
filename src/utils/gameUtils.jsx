@@ -85,10 +85,10 @@ export function useRoleRequester(
 //   );
 // };
 export const GameResultDisplay = ({ localGameState, playerId }) => {
-  if (localGameState.gameStatus !== "complete") return null;
+  if (localGameState?.gameStatus !== "complete") return null;
 
-  const winner = localGameState.winner;
-  const winnerRole = localGameState.roles?.[winner] || winner || "Unknown";
+  const winner = localGameState?.winner;
+  const winnerRole = localGameState?.roles?.[winner] || winner || "Unknown";
 
   return (
     <div className="bg-white p-4 rounded shadow text-center">
@@ -105,23 +105,48 @@ export const GameResultDisplay = ({ localGameState, playerId }) => {
   );
 };
 
-// ✅ Dev-only JSON debugger for local vs raw states
-export const GameJsonDebug = ({ localGameState, rawState }) => (
-  <div className="d-flex flex-row justify-content-center align-items-start w-100 gap-2 mt-3">
-    <div className="jsonMessage border rounded p-2 bg-gray-100">
-      Raw State (from gameConsole)
+// // ✅ Dev-only JSON debugger for local vs raw states
+// export const GameJsonDebug = ({ localGameState, rawState }) => (
+//   <div className="d-flex flex-row justify-content-center align-items-start w-100 gap-2 mt-3">
+//     <div className="jsonMessage border rounded p-2 bg-gray-100">
+//       Raw State (from gameConsole)
+//       <JsonView
+//         data={rawState}
+//         shouldExpandNode={(level) => level === 0}
+//         style={{ fontSize: "14px", lineHeight: "1.2" }}
+//       />
+//     </div>
+
+//     <div className="jsonMessage border rounded p-2 bg-gray-100">
+//       Local Merged State (used in display)
+//       <JsonView
+//         data={localGameState}
+//         shouldExpandNode={(level) => level === 0}
+//         style={{ fontSize: "14px", lineHeight: "1.2" }}
+//       />
+//     </div>
+//   </div>
+// );
+export const GameJsonDebug = ({ sentToServer, receivedFromServer }) => (
+  <div>
+    <div className="border rounded p-2 bg-gray-100 text-[10px] leading-[1.2] text-left">
+      <h4 className="font-semibold">Sent to Server</h4>
       <JsonView
-        data={rawState}
-        shouldExpandNode={(level) => level === 0}
+        data={sentToServer}
+        shouldExpandNode={(level, value, type) =>
+          level === 0 || type === "payload"
+        }
         style={{ fontSize: "14px", lineHeight: "1.2" }}
       />
     </div>
 
-    <div className="jsonMessage border rounded p-2 bg-gray-100">
-      Local Merged State (used in display)
+    <div className="border rounded p-2 bg-gray-100 text-[10px] leading-[1.2] text-left">
+      <h4 className="font-semibold">Received from Server</h4>
       <JsonView
-        data={localGameState}
-        shouldExpandNode={(level) => level === 0}
+        data={receivedFromServer}
+        shouldExpandNode={(level, value, type) =>
+          level === 0 || type === "payload"
+        }
         style={{ fontSize: "14px", lineHeight: "1.2" }}
       />
     </div>

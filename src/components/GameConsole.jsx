@@ -11,6 +11,7 @@ import {
 import "react-json-view-lite/dist/index.css";
 import { verifyGameMessage } from "../utils/verifications";
 import "./css/gameConsole.css"; // Assuming you have a CSS file for styles
+import GameShell from "./GameShell"; // once, in GameConsole
 
 const GameConsole = ({
   sendMessage,
@@ -27,10 +28,24 @@ const GameConsole = ({
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [gameMessagesSent, setGameMessagesSent] = useState({});
 
-  const sendGameMessage = (gameId, message) => {
-    console.log("Sending game message gameId:", gameId, message);
-    message.payload.type = "game";
-    message.relayId = gameId;
+  const sendGameMessage = (gameId, payload) => {
+    console.log("sendGameMessage gameId payload:", gameId, payload);
+
+    if (!payload || !gameId) {
+      console.error("Invalid game message:", payload);
+      return;
+    }
+    const message = {
+      relayId: gameId,
+      payload: {
+        type: "game",
+        action: "gameAction",
+        ...payload,
+        gameId,
+      },
+    };
+
+    console.log("GameConsole sendGameMessage message:", message);
     setGameMessagesSent((prev) => {
       const updated = { ...prev };
       updated[gameId] = [...(updated[gameId] || []), message];
@@ -59,10 +74,6 @@ const GameConsole = ({
         updateGameState(gameId, payload); // ✅ Centralized update
         console.log(`🛠️ Updated GameState for ${gameId}:`, payload);
         break;
-      // case "results":
-      //   updateGameState(gameId, payload); // ✅ Centralized update
-      //   console.log(`🛠️ Updated GameState for ${gameId}:`, payload);
-      //   break;
 
       case "gameEnded":
         setGameStates((prevStates) => {
@@ -84,14 +95,6 @@ const GameConsole = ({
 
       const gamesArray = Array.from(gamesToInit.values()).flat();
       console.log("🚀 Initializing new games:", gamesArray);
-
-      // setAddRelayConnections(
-      //   gamesArray.map((game) => ({
-      //     id: game.gameId,
-      //     url: game.wsAddress,
-      //     type: "game",
-      //   }))
-      // );
       setAddRelayConnections((prev) => [
         ...prev,
         ...gamesArray.map((game) => ({
@@ -123,27 +126,8 @@ const GameConsole = ({
         const lobbyIdsToInit = Array.from(gamesToInit.keys());
         console.log("Lobby IDs to initialize:", lobbyIdsToInit);
 
-        // Track which game connections were refreshed
         const gamesRefreshed = [];
 
-        // Remove all games from gameStates where game.lobbyId matches one of those
-        // setGameStates((prevGameStates) => {
-        //   const updated = new Map();
-        //   for (const [gameId, gameState] of prevGameStates.entries()) {
-        //     if (!lobbyIdsToInit.includes(gameState.lobbyId)) {
-        //       console.log("Not refreshing gameState", gameId, gameState);
-        //       updated.set(gameId, gameState);
-        //     } else {
-        //       console.log(
-        //         `🧹 Refreshing gameState and connections for game ${gameId} from gameState ${gameState}`
-        //       );
-        //       gamesRefreshed.push(gameId); // Track this game as refreshed
-        //     }
-        //   }
-        //   return updated;
-        // });
-
-        // Remove processed games from gamesToInit
         setGamesToInit((prev) => {
           const updated = new Map(prev);
           for (const lobbyId of lobbyIdsToInit) {
@@ -180,24 +164,6 @@ const GameConsole = ({
       }
     }
   }, [gameConnections, gamesToInit]);
-
-  // const initNewGames = (games) => {
-  //   console.log("Initializing games", games);
-  //   console.log("gameConnections", gameConnections);
-  //   //delet each game.lobbyId from gameStates.lobbyId
-
-  //   games.forEach((game) => {
-  //     const gameId = game.gameId;
-  //     const connection = gameConnections.get(gameId);
-  //     if (connection && connection.readyState === 1) {
-  //       console.log("Game to Init:", game);
-  //       updateGameState(gameId, game); // ✅ Centralized update
-  //       console.log(`🗺️ Game ${gameId} stored in gameMap.`);
-  //     } else {
-  //       console.warn(`❌ Connection not ready for game ID: ${gameId}`);
-  //     }
-  //   });
-  // };
 
   const initNewGames = (games) => {
     console.log("Initializing games", games);
@@ -240,32 +206,6 @@ const GameConsole = ({
     });
   };
 
-  // const updateGameState = (gameId, newState) => {
-  //   setGameStates((prevStates) => {
-  //     const updatedMap = new Map(prevStates);
-  //     const currentGameState = updatedMap.get(gameId) || {};
-
-  //     const mergedState = { ...currentGameState, ...newState };
-
-  //     const isSame = Object.keys(mergedState).every(
-  //       (key) =>
-  //         currentGameState[key] === mergedState[key] ||
-  //         JSON.stringify(currentGameState[key]) ===
-  //           JSON.stringify(mergedState[key])
-  //     );
-
-  //     if (isSame) {
-  //       console.log("🔁 Skipping update — state unchanged");
-  //       return prevStates;
-  //     }
-
-  //     updatedMap.set(gameId, mergedState);
-  //     console.log("✅ Updated gameStates Map:", updatedMap);
-
-  //     return updatedMap;
-  //   });
-  // };
-
   const disconnectGame = (gameId) => {
     if (!gameId || !gameConnections.has(gameId)) {
       console.warn(
@@ -292,15 +232,33 @@ const GameConsole = ({
       gameState,
       gameId,
       disconnectSelf: () => disconnectGame(gameId), // ✅ secure scoped disconnect
+      sentMessages: gameMessagesSent[gameId] || [],
+      receivedMessages: gameMessages[gameId] || [],
+      //gameUtils,
     };
+    // switch (gameState.gameType) {
+    //   case "rock-paper-scissors":
+    //     return <RockPaperScissors {...sharedProps} />;
+    //   case "odds-and-evens":
+    //     return <OddsAndEvens {...sharedProps} />;
+    //   case "tic-tac-toe":
+    //     return <TicTacToe {...sharedProps} />;
+    //   default:
+    //     return <p>Game type not supported.</p>;
+    // }
     switch (gameState.gameType) {
       case "rock-paper-scissors":
-        return <RockPaperScissors {...sharedProps} />;
+        return (
+          <GameShell Component={RockPaperScissors} sharedProps={sharedProps} />
+        );
       case "odds-and-evens":
-        return <OddsAndEvens {...sharedProps} />;
+        return <GameShell Component={OddsAndEvens} sharedProps={sharedProps} />;
       case "tic-tac-toe":
-        return <TicTacToe {...sharedProps} />;
+        return <GameShell Component={TicTacToe} sharedProps={sharedProps} />;
       default:
+        console.error(
+          `Unsupported game type: ${gameState.gameType} for game ID: ${gameId}`
+        );
         return <p>Game type not supported.</p>;
     }
   };
@@ -328,6 +286,8 @@ const GameConsole = ({
         className="border p-2 rounded mb-3"
         style={{ maxHeight: "200px", overflowY: "auto" }}
       >
+        {console.log("Game Connections:", gameConnections)}
+        {console.log("Game States:", gameStates)}
         {Array.from(gameConnections.entries())
           .filter(([id]) => gameStates.get(id)?.lobbyStatus === "started")
           .map(([id]) => (
@@ -409,7 +369,9 @@ const GameConsole = ({
                   `Rendering game component gameType: ${gameState.gameType} for game ID: ${gameId} at URL: ${wsAddress}`
                 )}
                 {renderGameComponent(gameId, gameState, wsAddress)}
-                <p>Game Messages:</p>
+                <div className="mt-3">
+                  <h4>All Game Console Messages:</h4>
+                </div>
                 <div style={{ display: "flex", gap: "20px" }}>
                   {/* Received Messages */}
                   <div>
