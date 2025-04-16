@@ -135,9 +135,11 @@ const App = () => {
   return (
     <ErrorBoundary>
       <div className="container mt-5">
+        <h1>POGN Client</h1>
+        <h2 className="mt-2">Poker and Other Game On NOSTR</h2>
         <Player setPlayerId={setPlayerId} />
         {playerId && <Dashboard playerName="Player" playerId={playerId} />}
-        <div className="mt-3">
+        <div>
           {/* {connections.size > 0 ? (
             <> */}
           <RelayManager
@@ -210,12 +212,6 @@ const App = () => {
                   });
 
                   console.log("🎯 Sent createLobby to", selectedConnectionId);
-
-                  // if (autoLogin) {
-                  //   setSignedInLobbies((prev) =>
-                  //     new Set(prev).add(createLobbyId)
-                  //   );
-                  // }
                 } else {
                   console.warn(`Connection ${selectedConnectionId} not ready`);
                 }
@@ -223,22 +219,6 @@ const App = () => {
             >
               Create Lobby
             </button>
-
-            {/* <div className="form-check form-switch d-flex align-items-center">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="autoLoginSwitch"
-                checked={autoLogin}
-                onChange={() => setAutoLogin(!autoLogin)}
-              />
-              <label
-                className="form-check-label ms-1"
-                htmlFor="autoLoginSwitch"
-              >
-                Auto Login
-              </label>
-            </div> */}
           </div>
         </div>
 
@@ -275,32 +255,12 @@ const App = () => {
                   ...prev,
                   { id: lobbyConnectId, url: lobbyConnectUrl, type: "lobby" },
                 ]);
-                // if (autoLogin) {
-                //   setSignedInLobbies((prev) =>
-                //     new Set(prev).add(lobbyConnectId)
-                //   );
-                // }
                 setLobbyConnectUrl("");
                 setLobbyConnectId("");
               }}
             >
               Connect
             </button>
-            {/* <div className="form-check form-switch d-flex align-items-center ms-2">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="autoLoginSwitch"
-                checked={autoLogin}
-                onChange={() => setAutoLogin(!autoLogin)}
-              />
-              <label
-                className="form-check-label ms-1"
-                htmlFor="autoLoginSwitch"
-              >
-                Auto Login
-              </label>
-            </div> */}
           </div>
         </div>
 

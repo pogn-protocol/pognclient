@@ -54,8 +54,8 @@ const Lobby = ({
         },
       });
 
-      setSignedInLobbies((prev) => new Set(prev).add(lobbyId));
-      setSignedIntoLobby(true);
+      // setSignedInLobbies((prev) => new Set(prev).add(lobbyId));
+      // setSignedIntoLobby(true);
     } else {
       console.warn(`❌ Lobby ${lobbyId} connection not ready.`);
     }
@@ -90,6 +90,19 @@ const Lobby = ({
     switch (action) {
       case "refreshLobby":
         console.log("Game list received:", payload);
+        const isPlayerNowInLobby =
+          Array.isArray(payload.lobbyPlayers) &&
+          payload.lobbyPlayers.includes(playerId);
+
+        if (isPlayerNowInLobby) {
+          setSignedInLobbies((prev) => new Set(prev).add(lobbyId));
+          setSignedIntoLobby(true);
+          console.log(`✅ ${playerId} confirmed in lobby ${lobbyId}`);
+        } else {
+          setSignedIntoLobby(false);
+          console.warn(`⛔ ${playerId} not present in lobby ${lobbyId}`);
+        }
+
         setLobbyGames(payload.lobbyGames || []);
         setLobbyPlayers(payload.lobbyPlayers || []);
         console.log("selectedGameId", selectedGameId);
