@@ -11,7 +11,7 @@ import {
 import "react-json-view-lite/dist/index.css";
 import { verifyGameMessage } from "../utils/verifications";
 import "./css/gameConsole.css"; // Assuming you have a CSS file for styles
-import GameShell from "./GameShell"; // once, in GameConsole
+import GameShell from "./GameShell"; // once, in
 
 const GameConsole = ({
   sendMessage,

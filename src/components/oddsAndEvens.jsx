@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 function OddsAndEvens({ sendGameMessage, gameState, playerId, gameId }) {
+  //
   const [isGameStarted, setGameStarted] = React.useState(false);
   const [isPlayerReady, setPlayerReady] = React.useState(false);
   const [selectedNumber, setSelectedNumber] = React.useState(null);
