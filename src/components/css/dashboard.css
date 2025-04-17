@@ -19,8 +19,8 @@
 }
 
 .avatar {
-  width: 10vw; /* Use viewport width for flexibility */
-  height: 10vw; /* Use viewport width for flexibility */
+  width: 5vw; /* Use viewport width for flexibility */
+  height: 5vw; /* Use viewport width for flexibility */
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid #007bff;
