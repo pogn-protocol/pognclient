@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { generatePrivateKey } from "nostr-tools";
+import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
 
 const defaultKeys = [
   "be7c4cf8b9db6950491f2de3ece4668a1beb93972082d021256146a2b4ae1348",
@@ -7,8 +8,16 @@ const defaultKeys = [
 ];
 
 const Player = ({ setPlayerId }) => {
+  const { nostrPubkey, nostrAvailable } = useNostrExtensionKey(); // ✅ hook call moved up
+
   const [customKeys, setCustomKeys] = useState([]);
-  const allKeys = [...defaultKeys, ...customKeys];
+
+  //const allKeys = [...defaultKeys, ...customKeys];
+  const allKeys = [
+    ...defaultKeys,
+    ...(nostrPubkey && !defaultKeys.includes(nostrPubkey) ? [nostrPubkey] : []),
+    ...customKeys,
+  ];
 
   const [playerId, setPlayerIdState] = useState(() => {
     const stored = sessionStorage.getItem("nostrPrivateKey");
@@ -48,6 +57,25 @@ const Player = ({ setPlayerId }) => {
       <p className="form-text text-sm text-gray-600 italic">
         Choose a player identity or generate a new private key.
       </p>
+      <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700  my-3 rounded shadow-sm">
+        <p className="text-sm">
+          Also Supports{" "}
+          <a
+            href="https://github.com/fiatjaf/nos2x"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-medium hover:text-yellow-900"
+          >
+            nos2x browser extension based nip-07
+          </a>
+        </p>
+      </div>
+
+      {nostrAvailable && nostrPubkey && (
+        <div className="text-green-600 text-sm italic mb-2">
+          ✅ Found Logged-in Nostr extension: {nostrPubkey.slice(0, 10)}…
+        </div>
+      )}
 
       <label className="form-label">Select or Generate Player ID:</label>
       <select
@@ -61,9 +89,15 @@ const Player = ({ setPlayerId }) => {
         }}
         style={{ fontFamily: "monospace", fontSize: "0.9em" }}
       >
+        {/* {allKeys.map((key) => (
+          <option key={key} value={key}>
+            {key}
+          </option>
+        ))} */}
         {allKeys.map((key) => (
           <option key={key} value={key}>
             {key}
+            {key === nostrPubkey ? " (Nostr Extension)" : ""}
           </option>
         ))}
       </select>
