@@ -11,8 +11,11 @@ export const useNostrProfile = (pubkey) => {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    if (!pubkey) return;
-
+    console.log("👀 useNostrProfile watching pubkey:", pubkey);
+    if (!pubkey) {
+      setProfile(null); // optional cleanup
+      return;
+    }
     const pool = new SimplePool();
     console.log("🔌 Connecting to relays for Nostr metadata...");
 

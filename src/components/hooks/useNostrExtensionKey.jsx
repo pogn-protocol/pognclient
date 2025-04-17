@@ -1,39 +1,52 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
 export const useNostrExtensionKey = () => {
-  const [nostrPubkey, setNostrPubkey] = useState(null);
-  const [nostrAvailable, setNostrAvailable] = useState(false);
+  const [nostrPubkey, setNostrPubkey] = useState(
+    () => localStorage.getItem("nostrExtensionKey") || null
+  );
+  const [nostrAvailable, setNostrAvailable] = useState(!!window.nostr);
+  const [nostrDetected, setNostrDetected] = useState(!!window.nostr);
 
   useEffect(() => {
-    let tries = 0;
-    const maxTries = 20; // 20 * 250ms = 5 seconds
-
-    const interval = setInterval(async () => {
-      tries++;
+    const interval = setInterval(() => {
       if (window.nostr) {
-        console.log("✅ Nostr extension detected on try", tries);
-        clearInterval(interval);
+        setNostrDetected(true);
         setNostrAvailable(true);
-
-        try {
-          const pubkey = await window.nostr.getPublicKey();
-          console.log("🔐 Got pubkey from extension:", pubkey);
-          setNostrPubkey(pubkey);
-        } catch (e) {
-          console.warn("⚠️ Failed to fetch Nostr pubkey:", e);
-        }
-      } else {
-        console.log(`⏳ Waiting for window.nostr... (try ${tries})`);
-      }
-
-      if (tries >= maxTries) {
-        console.warn("❌ Gave up waiting for Nostr extension.");
         clearInterval(interval);
       }
-    }, 250);
-
+    }, 500);
     return () => clearInterval(interval);
   }, []);
 
-  return { nostrAvailable, nostrPubkey };
+  const resetNostr = () => {
+    console.log("🔄 Resetting Nostr state...");
+    localStorage.removeItem("nostrExtensionKey");
+    setNostrPubkey(null);
+    setNostrAvailable(false);
+  };
+
+  const loginNostr = async () => {
+    if (!window.nostr) {
+      console.warn("❌ Nostr extension not available");
+      return;
+    }
+
+    try {
+      const pubkey = await window.nostr.getPublicKey();
+      console.log("🔐 Got pubkey from extension:", pubkey);
+      setNostrPubkey(pubkey);
+      localStorage.setItem("nostrExtensionKey", pubkey);
+      setNostrAvailable(true);
+    } catch (e) {
+      console.warn("❌ Failed to fetch pubkey from Nostr extension:", e);
+    }
+  };
+
+  return {
+    nostrDetected,
+    nostrAvailable,
+    nostrPubkey,
+    loginNostr,
+    resetNostr,
+  };
 };

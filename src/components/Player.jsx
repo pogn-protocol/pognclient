@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { generatePrivateKey } from "nostr-tools";
 import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
+import "./css/player.css";
 
 const defaultKeys = [
   "be7c4cf8b9db6950491f2de3ece4668a1beb93972082d021256146a2b4ae1348",
@@ -8,121 +9,189 @@ const defaultKeys = [
 ];
 
 const Player = ({ setPlayerId }) => {
-  const { nostrPubkey, nostrAvailable } = useNostrExtensionKey(); // ✅ hook call moved up
+  const { nostrPubkey, nostrAvailable, loginNostr, resetNostr } =
+    useNostrExtensionKey();
 
   const [customKeys, setCustomKeys] = useState([]);
+  const [nostrDetected, setNostrDetected] = useState(!!window.nostr);
+  // const [playerId, setPlayerIdState] = useState(() => {
+  //   const stored =
+  //     localStorage.getItem("nostrPrivateKey") ||
+  //     localStorage.getItem("nostrExtensionKey") ||
+  //     null;
+  //   console.log("🧠 Initial playerId from storage:", stored);
+  //   return stored;
+  // });
 
-  //const allKeys = [...defaultKeys, ...customKeys];
+  const [playerId, setPlayerIdState] = useState(() => {
+    const stored = localStorage.getItem("nostrPrivateKey") || null;
+    console.log("🧠 Initial playerId from localStorage:", stored);
+    return stored;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (window.nostr) {
+        setNostrDetected(true);
+        clearInterval(interval);
+      }
+    }, 300);
+    return () => clearInterval(interval);
+  }, []);
+
   const allKeys = [
     ...defaultKeys,
     ...(nostrPubkey && !defaultKeys.includes(nostrPubkey) ? [nostrPubkey] : []),
     ...customKeys,
   ];
 
-  const [playerId, setPlayerIdState] = useState(() => {
-    const stored = sessionStorage.getItem("nostrPrivateKey");
-    if (stored) return stored;
-    sessionStorage.setItem("nostrPrivateKey", defaultKeys[0]);
-    return defaultKeys[0];
-  });
+  // useEffect(() => {
+  //   console.log("📌 Effect running — playerId:", playerId);
+  //   if (!playerId && nostrAvailable && nostrPubkey) {
+  //     console.log("💡 Auto-setting Nostr extension key as player ID");
+  //     setPlayerIdState(nostrPubkey);
+  //     setPlayerId?.(nostrPubkey);
+  //     return;
+  //   }
+
+  //   if (playerId && playerId !== nostrPubkey) {
+  //     localStorage.setItem("nostrPrivateKey", playerId);
+  //     console.log("📝 Stored custom key to localStorage:", playerId);
+  //     setPlayerId?.(playerId);
+  //   }
+
+  //   if (playerId === nostrPubkey) {
+  //     localStorage.removeItem("nostrPrivateKey");
+  //     console.log("🧽 Cleared custom key (using nostrPubkey)");
+  //     setPlayerId?.(nostrPubkey);
+  //   }
+  // }, [playerId, nostrPubkey, nostrAvailable, setPlayerId]);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("nostrPrivateKey");
-
-    // If no stored key, but nostrPubkey is available, use it
-    if (!stored && nostrPubkey) {
-      console.log("🎯 Auto-selecting nostrPubkey:", nostrPubkey);
+    console.log("📌 Effect running — playerId:", playerId);
+    if (!playerId && nostrAvailable && nostrPubkey) {
+      console.log("💡 Auto-setting Nostr extension key as player ID");
       setPlayerIdState(nostrPubkey);
-      sessionStorage.setItem("nostrPrivateKey", nostrPubkey);
+      setPlayerId?.(nostrPubkey);
+      return;
+    }
+
+    if (playerId && playerId !== nostrPubkey) {
+      localStorage.setItem("nostrPrivateKey", playerId);
+      console.log("📝 Stored custom key to localStorage:", playerId);
+      setPlayerId?.(playerId);
+    }
+
+    if (playerId === nostrPubkey) {
+      localStorage.removeItem("nostrPrivateKey");
+      console.log("🧽 Cleared custom key (using nostrPubkey)");
       setPlayerId?.(nostrPubkey);
     }
-  }, [nostrPubkey, setPlayerId]);
-
-  useEffect(() => {
-    setPlayerId?.(playerId);
-    sessionStorage.setItem("nostrPrivateKey", playerId);
-  }, [playerId, setPlayerId]);
+  }, [playerId, nostrPubkey, nostrAvailable, setPlayerId]);
 
   const generateNewKey = () => {
     const newKey = generatePrivateKey();
+    console.log("⚡ Generated new private key:", newKey);
     setCustomKeys((prev) => [...prev, newKey]);
     setPlayerIdState(newKey);
-    sessionStorage.setItem("nostrPrivateKey", newKey);
+    localStorage.setItem("nostrPrivateKey", newKey);
     setPlayerId?.(newKey);
-    console.log("⚡ New key generated:", newKey);
+  };
+
+  const logoutNostrExtension = () => {
+    console.log("🚪 Logging out of Nostr extension");
+    resetNostr();
+    if (playerId === nostrPubkey) {
+      setPlayerIdState(null);
+      setPlayerId?.(null);
+    }
+
+    setTimeout(() => {
+      location.reload(); // 💥 hard refresh
+    }, 100);
   };
 
   return (
-    <div className="my-3">
+    <div className="styles.noBootstrap my-3">
       <p className="form-text text-sm text-gray-600 italic">
         Hint: For demo play of auto-generated games open two clients and choose
         one of the provided id's for each player.
       </p>
       <p className="form-text text-sm text-gray-600 italic">
-        Sign into the lobby with each of the provided id's and you will be
-        pre-joined to the auto generated games.
-      </p>
-      <p className="form-text text-sm text-gray-600 italic">
-        Or generate your own id and create your own games for other players to
-        join.
-      </p>
-      <p className="form-text text-sm text-gray-600 italic">
         Choose a player identity or generate a new private key.
       </p>
-      <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700  my-3 rounded shadow-sm">
-        <p className="text-sm">
-          Also Supports{" "}
-          <a
-            href="https://github.com/fiatjaf/nos2x"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline font-medium hover:text-yellow-900"
-          >
-            nos2x browser extension based nip-07
-          </a>
-        </p>
-      </div>
 
-      {nostrAvailable && nostrPubkey && (
+      {nostrDetected && (
         <div className="text-green-600 text-sm italic mb-2">
-          ✅ Found Logged-in Nostr extension: {nostrPubkey.slice(0, 10)}…
+          ✅ Nostr extension detected!
         </div>
       )}
 
-      <label className="form-label">Select or Generate Player ID:</label>
-      <select
-        className="form-select mb-2"
-        value={playerId}
-        onChange={(e) => {
-          const selected = e.target.value;
-          setPlayerIdState(selected);
-          sessionStorage.setItem("nostrPrivateKey", selected);
-          setPlayerId?.(selected);
-        }}
-        style={{ fontFamily: "monospace", fontSize: "0.9em" }}
-      >
-        {/* {allKeys.map((key) => (
-          <option key={key} value={key}>
-            {key}
-          </option>
-        ))} */}
-        {allKeys.map((key) => (
-          <option key={key} value={key}>
-            {key}
-            {key === nostrPubkey ? " (Nostr Extension)" : ""}
-          </option>
-        ))}
-      </select>
+      {nostrPubkey && (
+        <div className="text-green-600 text-sm italic mb-2">
+          ✅ Logged in with Nostr extension: {nostrPubkey.slice(0, 10)}…
+        </div>
+      )}
 
-      <button
-        className="btn btn-outline-primary btn-sm"
-        onClick={generateNewKey}
-      >
-        Generate New Key
-      </button>
+      {nostrDetected && !nostrPubkey && (
+        <button
+          className="btn btn-outline-success btn-sm mt-2"
+          onClick={loginNostr}
+        >
+          Connect Nostr Extension
+        </button>
+      )}
+
+      {/* {nostrPubkey && (
+        <div className="text-green-600 text-sm italic mb-2">
+          ✅ Nostr extension detected: {nostrPubkey.slice(0, 10)}…
+        </div>
+      )} */}
+      <div>
+        <label className="form-label">Select or Generate Player ID:</label>
+        <select
+          className="form-select mb-2"
+          value={playerId || ""}
+          onChange={(e) => {
+            const selected = e.target.value;
+            console.log("🧩 Selected new key from dropdown:", selected);
+            setPlayerIdState(selected);
+            if (selected !== nostrPubkey) {
+              localStorage.setItem("nostrPrivateKey", selected);
+            } else {
+              localStorage.removeItem("nostrPrivateKey");
+            }
+            setPlayerId?.(selected);
+          }}
+          style={{ fontFamily: "monospace", fontSize: "0.9em" }}
+        >
+          {allKeys.map((key) => (
+            <option key={key} value={key}>
+              {key}
+              {key === nostrPubkey ? " (Nostr Extension)" : ""}
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="btn btn-outline-primary btn-sm"
+          onClick={generateNewKey}
+        >
+          Generate New Key
+        </button>
+      </div>
+
+      {nostrAvailable && nostrPubkey && playerId === nostrPubkey && (
+        <button
+          className="btn btn-outline-danger btn-sm mt-2"
+          onClick={logoutNostrExtension}
+        >
+          Log Out Nostr Extension
+        </button>
+      )}
 
       <div className="form-text mt-2">
-        Selected key is stored in <code>sessionStorage</code> as your identity.
+        Selected key is stored in <code>localStorage</code> as your identity.
       </div>
     </div>
   );
