@@ -27,6 +27,18 @@ const Player = ({ setPlayerId }) => {
   });
 
   useEffect(() => {
+    const stored = sessionStorage.getItem("nostrPrivateKey");
+
+    // If no stored key, but nostrPubkey is available, use it
+    if (!stored && nostrPubkey) {
+      console.log("🎯 Auto-selecting nostrPubkey:", nostrPubkey);
+      setPlayerIdState(nostrPubkey);
+      sessionStorage.setItem("nostrPrivateKey", nostrPubkey);
+      setPlayerId?.(nostrPubkey);
+    }
+  }, [nostrPubkey, setPlayerId]);
+
+  useEffect(() => {
     setPlayerId?.(playerId);
     sessionStorage.setItem("nostrPrivateKey", playerId);
   }, [playerId, setPlayerId]);
