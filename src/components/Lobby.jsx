@@ -14,6 +14,7 @@ const Lobby = ({
   lobbyConnections,
   signedInLobbies,
   setSignedInLobbies,
+  nostrPubkey,
 }) => {
   const [signedIntoLobby, setSignedIntoLobby] = useState(false);
   const [lobbyGames, setLobbyGames] = useState([]);
@@ -33,8 +34,18 @@ const Lobby = ({
   const [lobbyMessagesReceived, setLobbyMessagesReceived] = useState([]);
   const [lobbyMessagesSent, setLobbyMessagesSent] = useState([]);
   const [suggestedName, setSuggestedName] = useState("");
+  const [isPrivateGame, setIsPrivateGame] = useState(false);
+  const [maxPlayers, setMaxPlayers] = useState(1); // Default to 2 players
+  const [invitedPlayers, setInvitedPlayers] = useState([]); // Array to hold invited players
+  const [invitedError, setInvitedError] = useState("");
 
   const isSignedIn = signedInLobbies.has(lobbyId);
+
+  const GAME_CONFIGS = {
+    "rock-paper-scissors": { maxPlayers: 2 },
+    "odds-and-evens": { maxPlayers: 2 },
+    // add more games here
+  };
 
   const sendLobbyMessage = (message) => {
     setLobbyMessagesSent((prev) => [...prev, message]); // track sent messages
@@ -135,12 +146,18 @@ const Lobby = ({
             updatedMap.set(lobbyId, playerGames);
             return updatedMap;
           });
-          // const gameId = playerGames[0].gameId; // Get the first gameId from the filtered games
-          // setSelectedGameId(gameId); // Highlight the selected game
-          // setSelectedGamestate((prevState) => ({
-          //   ...prevState,
-          //   ...playerGames[0],
-          // }));
+          setIsJoining(false);
+
+          const gameId = playerGames[0].gameId; // Get the first gameId from the filtered games
+          setSelectedGameId(gameId); // Highlight the selected game
+          setSelectedGamestate((prevState) => ({
+            ...prevState,
+            ...playerGames[0],
+          }));
+          const isPlayerInGame =
+            Array.isArray(playerGames[0].players) &&
+            playerGames[0].players.includes(String(playerId));
+          setHasJoined(isPlayerInGame); // ✅ this was missing
         } else {
           console.log("Player is not in any valid game. Staying in the lobby.");
           setSelectedGameId(null);
@@ -199,22 +216,68 @@ const Lobby = ({
   };
 
   const handleCreateGame = () => {
-    console.log(
-      `${playerId} creating game of type ${selectedGameType} with name ${suggestedName}`
-    );
-    sendLobbyMessage({
-      payload: {
-        type: "lobby",
-        lobbyId: lobbyId,
-        action: "createNewGame",
-        gameType: selectedGameType,
-        playerId,
-        gameId: suggestedName, // 🦊 Include the suggested/entered name here
-      },
-    });
+    if (isPrivateGame) {
+      const trimmedPlayers = invitedPlayers.map((id) => (id || "").trim());
+      const allFilled =
+        trimmedPlayers.length === maxPlayers &&
+        trimmedPlayers.every((id) => id.length >= 8);
+      if (!allFilled) {
+        setInvitedError("Please enter a valid ID (8+ chars) for each player.");
+        return;
+      }
+      setInvitedError(""); // Clear error
+
+      sendLobbyMessage({
+        payload: {
+          type: "lobby",
+          lobbyId,
+          action: "createNewGame",
+          gameType: selectedGameType,
+          playerId,
+          gameId: suggestedName,
+          params: {
+            private: true,
+            allowedPlayers: trimmedPlayers,
+          },
+        },
+      });
+    } else {
+      sendLobbyMessage({
+        payload: {
+          type: "lobby",
+          lobbyId,
+          action: "createNewGame",
+          gameType: selectedGameType,
+          playerId,
+          gameId: suggestedName,
+        },
+      });
+    }
   };
 
   const handleJoinGame = () => {
+    //check if game isPrivate and if playerId is .allowedPlayers
+    console.log("Selected game state:", selectedGamestate);
+    const isPrivateGame = selectedGamestate.isPrivate;
+    console.log("Is private game:", isPrivateGame);
+    if (isPrivateGame) {
+      const isPlayerAllowed =
+        selectedGamestate.allowedPlayers?.includes(playerId);
+      if (!isPlayerAllowed) {
+        setInvitedError("❌ You are not invited to join this private game.");
+        return;
+      } else {
+        //setInvitedError(""); // Clear error if player is allowed
+        console.log("nostrPubkey", nostrPubkey);
+        if (!nostrPubkey) {
+          alert(
+            "❌ Login with a nostr extension like nos2x to join private games."
+          );
+          return;
+        }
+      }
+    }
+
     console.log(`${playerId} joining game... ${selectedGamestate.gameId}`);
     setIsJoining(true);
     sendLobbyMessage({
@@ -222,7 +285,6 @@ const Lobby = ({
         type: "lobby",
         lobbyId: lobbyId,
         action: "joinGame",
-        game: "rock-paper-scissors",
         playerId,
         gameId: selectedGamestate.gameId,
       },
@@ -259,6 +321,22 @@ const Lobby = ({
       });
     }
   }, [signedIntoLobby]);
+
+  useEffect(() => {
+    if (isPrivateGame && selectedGameType) {
+      const config = GAME_CONFIGS[selectedGameType];
+      if (config) {
+        setMaxPlayers(config.maxPlayers);
+
+        // Auto-fill your own playerId as the first invited player
+        setInvitedPlayers((prev) => {
+          const updated = [...prev];
+          updated[0] = playerId; // Ensure index 0 is always yours
+          return updated;
+        });
+      }
+    }
+  }, [selectedGameType, isPrivateGame, playerId]);
 
   return (
     <div className="lobby">
@@ -398,47 +476,113 @@ const Lobby = ({
               </ul>
             </div>
 
-            <h5>Create New Game:</h5>
-            <label
-              htmlFor="gameTypeSelect"
-              style={{
-                display: "block",
-                fontWeight: "bold",
-                marginBottom: "4px",
-              }}
-            >
-              Select New Game Type:
-            </label>
-            <select
-              id="gameTypeSelect"
-              value={selectedGameType}
-              onChange={(e) => setSelectedGameType(e.target.value)}
-            >
-              <option value="rock-paper-scissors">Rock Paper Scissors</option>
-              <option value="odds-and-evens">Odds and Evens</option>
-            </select>
-            <div style={{ marginBottom: "10px" }}>
+            <div className="flex flex-col gap-2 mt-4">
+              <h3 className="mt-3">Create New Game:</h3>
               <label
-                htmlFor="gameNameInput"
+                htmlFor="gameTypeSelect"
                 style={{
                   display: "block",
                   fontWeight: "bold",
                   marginBottom: "4px",
                 }}
               >
-                New GameId:
+                Select New Game Type:
               </label>
-              <input
-                id="gameNameInput"
-                type="text"
-                value={suggestedName}
-                onChange={(e) => setSuggestedName(e.target.value)}
-                placeholder="Enter game name"
-                style={{ marginBottom: "10px", padding: "5px", width: "100%" }}
-              />
-            </div>
 
-            <div className="flex flex-col gap-2 mt-4">
+              <select
+                id="gameTypeSelect"
+                value={selectedGameType}
+                onChange={(e) => setSelectedGameType(e.target.value)}
+              >
+                {Object.entries(GAME_CONFIGS).map(([key, cfg]) => (
+                  <option key={key} value={key}>
+                    {key
+                      .replace(/-/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+
+              {/* <select
+                id="gameTypeSelect"
+                value={selectedGameType}
+                onChange={(e) => setSelectedGameType(e.target.value)}
+              >
+                <option value="rock-paper-scissors" maPlayers="2">Rock Paper Scissors</option>
+                <option value="odds-and-evens" maxPlayers="2">Odds and Evens</option>
+              </select> */}
+              <div style={{ marginBottom: "5px" }}>
+                <label
+                  htmlFor="gameNameInput"
+                  style={{
+                    display: "block",
+                    fontWeight: "bold",
+                    marginBottom: "4px",
+                  }}
+                >
+                  New GameId:
+                </label>
+                <input
+                  id="gameNameInput"
+                  type="text"
+                  value={suggestedName}
+                  onChange={(e) => setSuggestedName(e.target.value)}
+                  placeholder="Enter game name"
+                  style={{
+                    marginBottom: "5px",
+                    padding: "5px",
+                    width: "100%",
+                  }}
+                />
+              </div>
+
+              <div className="form-check mb-2">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="privateGameCheck"
+                  checked={isPrivateGame}
+                  onChange={() => setIsPrivateGame(!isPrivateGame)}
+                />
+                <label className="form-check-label" htmlFor="privateGameCheck">
+                  Private Game
+                </label>
+              </div>
+
+              {isPrivateGame && (
+                <>
+                  <div className="mb-2">
+                    <label className="fw-bold">
+                      Enter the IDs of the players allowed to join:
+                    </label>
+                    {invitedError && (
+                      <div
+                        className="text-danger mt-1"
+                        style={{ fontSize: "0.875rem" }}
+                      >
+                        {invitedError}
+                      </div>
+                    )}
+                  </div>
+
+                  {[...Array(maxPlayers)].map((_, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      className="form-control mb-1"
+                      placeholder={`Player ID ${i + 1}`}
+                      value={invitedPlayers[i] || (i === 0 ? playerId : "")}
+                      disabled={i === 0}
+                      onChange={(e) => {
+                        const copy = [...invitedPlayers];
+                        copy[i] = e.target.value;
+                        setInvitedPlayers(copy);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+
               <button
                 onClick={handleCreateGame}
                 className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold"
@@ -471,7 +615,7 @@ const Lobby = ({
                   selectedGamestate.players.length >=
                     selectedGamestate.instance.maxPlayers
                     ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-yellow-500 hover:bg-yellow-600"
+                    : "bg-green-600 hover:bg-green-700"
                 }`}
               >
                 {hasJoined ? "Joined" : isJoining ? "Joining..." : "Join Game"}

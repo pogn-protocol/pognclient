@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Player from "./components/Player";
 import Dashboard from "./components/Dashboard";
 import "./App.css";
-import "bootstrap/dist/css/bootstrap.min.css";
+//import "bootstrap/dist/css/bootstrap.min.css";
 import ErrorBoundary from "./ErrorBoundary";
 import Lobby from "./components/Lobby";
 import GameConsole from "./components/GameConsole";
@@ -11,6 +11,10 @@ import { v4 as uuidv4 } from "uuid";
 import useMessages from "./components/hooks/useMessages";
 import RelayManager from "./components/RelayManager";
 import pognClientConfigs from "./pognClientConfigs";
+import { useIrisPlayerId } from "./components/hooks/useIrisDB";
+import { useNostrExtensionKey } from "./components/hooks/useNostrExtensionKey";
+import GameInviteModal from "./components/GameInviteModal";
+
 console.log("pognClientConfigs", pognClientConfigs);
 //
 window.onerror = function (message, source, lineno, colno, error) {
@@ -40,16 +44,22 @@ const App = () => {
   const [lobbyConnectionsInit, setLobbyConnectionsInit] = useState(false);
   const [selectedLobbyId, setSelectedLobbyId] = useState(null);
   const [signedInLobbies, setSignedInLobbies] = useState(new Set());
-  const [autoLogin, setAutoLogin] = useState(true);
   const [createLobbyId, setCreateLobbyId] = useState("lobby3");
   const [selectedConnectionId, setSelectedConnectionId] = useState("");
   const [lobbyConnectId, setLobbyConnectId] = useState("lobby3");
   const [selectedRelayId, setSelectedRelayId] = useState(null);
-
   const [lobbyConnectUrl, setLobbyConnectUrl] = useState(
     pognClientConfigs.LOBBY_WS_URL
   );
   const [connections, setConnections] = useState(new Map());
+  const [irisPlayerId, setIrisPlayerId] = useIrisPlayerId(
+    "lobby1",
+    pognClientConfigs.LOBBY_WS_URL
+  );
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteGameId, setInviteGameId] = useState(null);
+  const [urlParams, setUrlParams] = useState({});
+  const { nostrPubkey } = useNostrExtensionKey();
 
   const {
     messages,
@@ -57,6 +67,7 @@ const App = () => {
     gameMessages,
     handleMessage,
     handleSendMessage,
+    gameInviteMessages,
   } = useMessages(
     playerId,
     connections,
@@ -65,6 +76,14 @@ const App = () => {
     setRemoveRelayConnections,
     setSignedInLobbies
   );
+
+  useEffect(() => {
+    console.log("Player ID from IrisDB:", irisPlayerId);
+    console.log("Player ID:", playerId);
+    if (playerId && playerId !== irisPlayerId) {
+      setIrisPlayerId(playerId);
+    }
+  }, [playerId, irisPlayerId, setIrisPlayerId]);
 
   useEffect(() => {
     setLobbyConnectUrl(pognClientConfigs.LOBBY_WS_URL);
@@ -132,12 +151,59 @@ const App = () => {
     )
   );
 
+  const inviteDetected = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const parsed = Object.fromEntries(params.entries());
+
+    if (parsed.invite === "true") {
+      console.log("🔑 Invite link detected. Storing URL params...");
+      inviteDetected.current = true;
+      setUrlParams(parsed);
+      setPlayerId(parsed.playerId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      inviteDetected.current &&
+      playerId &&
+      connections.get("lobby1")?.readyState === 1
+    ) {
+      console.log("🟢 Invite modal conditions met, showing modal.");
+      setShowInviteModal(true);
+      inviteDetected.current = false; // only run once
+    }
+  }, [playerId, connections]);
+
   return (
     <ErrorBoundary>
+      {showInviteModal &&
+        Array.from(connections.values()).some(
+          (conn) => conn.readyState === 1
+        ) && (
+          <GameInviteModal
+            isOpen={showInviteModal}
+            setIsOpen={false}
+            onClose={() => setShowInviteModal(false)}
+            urlParams={urlParams}
+            onJoinWithId={(id) => {
+              setShowInviteModal(false);
+              setPlayerId(id);
+            }}
+            setPlayerId={setPlayerId}
+            sendMessage={(id, msg) => handleSendMessage(id, msg)}
+            lastGameInviteMessage={gameInviteMessages?.slice(-1)[0] || {}}
+            connections={connections}
+          />
+        )}
+      {/* Block the rest of the app while the modal is active */}
+      {/* {!showInviteModal && ( */}
       <div className="container mt-5">
         <h1>POGN Client</h1>
         <h2 className="mt-2">Poker and Other Game On NOSTR</h2>
-        <Player setPlayerId={setPlayerId} />
+        <Player playerId={playerId} setPlayerId={setPlayerId} />
         {playerId && <Dashboard playerName="Player" playerId={playerId} />}
         <div>
           {/* {connections.size > 0 ? (
@@ -310,6 +376,7 @@ const App = () => {
                 signedInLobbies={signedInLobbies}
                 setSignedInLobbies={setSignedInLobbies}
                 setAddRelayConnections={setAddRelayConnections}
+                nostrPubkey={nostrPubkey}
               />
             </div>
           ))}
@@ -431,6 +498,7 @@ const App = () => {
             ))}
         </div>
       </div>
+      {/* )} */}
     </ErrorBoundary>
   );
 };

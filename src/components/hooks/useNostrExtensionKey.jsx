@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useLocalState } from "irisdb-hooks";
 
 export const useNostrExtensionKey = () => {
-  const [nostrPubkey, setNostrPubkey] = useState(
-    () => localStorage.getItem("nostrExtensionKey") || null
+  const [nostrPubkey, setNostrPubkey] = useLocalState("nostr/extensionKey", "");
+  const [nostrDetected, setNostrDetected] = useLocalState(
+    "nostr/detected",
+    false
   );
-  const [nostrAvailable, setNostrAvailable] = useState(!!window.nostr);
-  const [nostrDetected, setNostrDetected] = useState(!!window.nostr);
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (window.nostr) {
         setNostrDetected(true);
-        setNostrAvailable(true);
         clearInterval(interval);
       }
     }, 500);
@@ -20,9 +20,8 @@ export const useNostrExtensionKey = () => {
 
   const resetNostr = () => {
     console.log("🔄 Resetting Nostr state...");
-    localStorage.removeItem("nostrExtensionKey");
     setNostrPubkey(null);
-    setNostrAvailable(false);
+    setNostrDetected(false);
   };
 
   const loginNostr = async () => {
@@ -35,8 +34,6 @@ export const useNostrExtensionKey = () => {
       const pubkey = await window.nostr.getPublicKey();
       console.log("🔐 Got pubkey from extension:", pubkey);
       setNostrPubkey(pubkey);
-      localStorage.setItem("nostrExtensionKey", pubkey);
-      setNostrAvailable(true);
     } catch (e) {
       console.warn("❌ Failed to fetch pubkey from Nostr extension:", e);
     }
@@ -44,9 +41,9 @@ export const useNostrExtensionKey = () => {
 
   return {
     nostrDetected,
-    nostrAvailable,
     nostrPubkey,
     loginNostr,
     resetNostr,
+    setNostrPubkey,
   };
 };

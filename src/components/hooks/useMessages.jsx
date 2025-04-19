@@ -12,6 +12,7 @@ export default function useMessages(
   const [messages, setMessages] = useState({});
   const [lobbyMessages, setLobbyMessages] = useState({});
   const [gameMessages, setGameMessages] = useState({});
+  const [gameInviteMessages, setGameInviteMessages] = useState([]);
 
   const handleSendMessage = useCallback(
     (id, message) => {
@@ -52,6 +53,22 @@ export default function useMessages(
       }));
 
       const { type, lobbyId, gameId, action, lobbyAddress } = message.payload;
+      if (message.type === "error") {
+        console.warn(`⚠️ Error message received from ${id}:`, message.payload);
+        let errorMessage = message.payload.message;
+        console.error(`⚠️ Error message received from ${id}:`, errorMessage);
+        alert(`⚠️ Error message received from ${id}: ${errorMessage}`);
+
+        return;
+      }
+
+      if (type === "gameInvite" || type === "lobby") {
+        console.log("Game invite message received:", message);
+        if (type === "lobby" && action !== "refreshLobby") return;
+        console.log("Game invite message received:", message);
+        setGameInviteMessages((prev) => [...prev, message]);
+        return;
+      }
 
       if (type === "lobby") {
         if (action === "newLobby" && lobbyId && lobbyAddress) {
@@ -95,5 +112,6 @@ export default function useMessages(
     gameMessages,
     handleMessage,
     handleSendMessage,
+    gameInviteMessages,
   };
 }
