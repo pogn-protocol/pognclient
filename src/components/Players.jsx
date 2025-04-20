@@ -1,86 +1,86 @@
 import { useState, useEffect } from "react";
-import { utils } from "nostr-tools";
+import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
 import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
 import "./css/player.css";
-import { useLocalState } from "irisdb-hooks";
 
 const defaultKeys = [
   "be7c4cf8b9db6950491f2de3ece4668a1beb93972082d021256146a2b4ae1348",
   "df08f70cb2f084d2fb787af232bbb18873e7d88919854669e4e691ead9baa4f4",
 ];
 
-const Player = ({ playerId, setPlayerId }) => {
+const Player = ({ activePlayerId, setActivePlayerId, allKeys, setAllKeys }) => {
+  const [customKeys, setCustomKeys] = useState([]);
   const { nostrPubkey, nostrDetected, loginNostr, resetNostr } =
     useNostrExtensionKey();
 
-  const [customKeys, setCustomKeys] = useState([]);
-  // const [nostrDetected, setNostrDetected] = useState(!!window.nostr);
-  const [pendingNostrLogin, setPendingNostrLogin] = useState(false);
+  // ✅ Add key and optionally set it active
+  const addKey = (newKey, makeActive = true) => {
+    setAllKeys((prev) => {
+      if (prev.includes(newKey)) return prev;
+      const updated = [...prev, newKey];
+      console.log("➕ Added new key:", newKey);
+      return updated;
+    });
 
-  //  const [playerId, setSelectedPlayerId] = useLocalState("pogn/playerId", "");
-  // const [selectedPlayerId, setSelectedPlayerId] = useState("");
+    if (makeActive) {
+      console.log("🎯 Promoting new key to active:", newKey);
+      setActivePlayerId(newKey);
+    }
+  };
 
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     if (window.nostr) {
-  //       setNostrDetected(true);
-  //       clearInterval(interval);
-  //     }
-  //   }, 300);
-  //   return () => clearInterval(interval);
-  // }, []);
+  // ✅ Inject default and nostr keys once
+  useEffect(() => {
+    defaultKeys.forEach((k) => addKey(k, false));
+  }, []);
 
-  const allKeys = [
-    ...defaultKeys,
-    ...(nostrPubkey && !defaultKeys.includes(nostrPubkey) ? [nostrPubkey] : []),
-    ...customKeys,
-  ];
+  useEffect(() => {
+    if (nostrPubkey && nostrDetected) {
+      console.log("📡 nostrPubkey updated:", nostrPubkey);
+      addKey(nostrPubkey, true); // Add & promote to active
+    }
+  }, [nostrPubkey, nostrDetected]);
 
-  // useEffect(() => {
-  //   console.log("📌 Effect running — playerId:", playerId);
-  //   if (typeof playerId !== "string" || playerId.length < 8) {
-  //     console.warn("🚨 Invalid or missing playerId. Resetting...");
-  //      setSelectedPlayerId("");
-  //     setPlayerId?.("");
-  //     return;
-  //   }
+  // ✅ Add custom keys (but don't auto-select them)
+  useEffect(() => {
+    customKeys.forEach((k) => addKey(k, false));
+  }, [customKeys]);
 
-  // }, [playerId, setPlayerId]);
+  // ✅ Always ensure activePlayerId is included
+  useEffect(() => {
+    if (!activePlayerId) return;
+    addKey(activePlayerId, false);
+  }, [activePlayerId]);
 
   const generateNewKey = () => {
-    const newKey = utils.generatePrivateKey();
+    let secKey = generateSecretKey();
+    const newKey = getPublicKey(secKey);
     console.log("⚡ Generated new private key:", newKey);
     setCustomKeys((prev) => [...prev, newKey]);
-    //localStorage.setItem("nostrPrivateKey", newKey);
-    setPlayerId(newKey);
+    addKey(newKey, true);
   };
 
   const logoutNostrExtension = () => {
     console.log("🚪 Logging out of Nostr extension");
     resetNostr();
-    if (playerId === nostrPubkey) {
-      setPlayerId(null);
+    if (activePlayerId === nostrPubkey) {
+      setActivePlayerId(null);
     }
 
     setTimeout(() => {
-      location.reload(); // 💥 hard refresh
+      location.reload();
     }, 100);
   };
 
   const handleLoginNostr = async () => {
-    //setPendingNostrLogin(true);
     try {
       if (!window.nostr) return;
       const ok = window.confirm(
-        `POGN Client: 
-        Your NOSTR extension will ask to auth your PUBLIC key to get your NOSTR profile and  irisDB will store your PUBLIC key to your local storage.`
+        `POGN Client:\nYour NOSTR extension will ask to auth your PUBLIC key to get your NOSTR profile and irisDB will store your PUBLIC key to your local storage.`
       );
       if (!ok) return;
-      // then call signer.user() or signEvent()
-
       await loginNostr();
     } finally {
-      //   setPendingNostrLogin(false);
+      // do nothing
     }
   };
 
@@ -118,11 +118,11 @@ const Player = ({ playerId, setPlayerId }) => {
         <label className="form-label">Select or Generate Player ID:</label>
         <select
           className="form-select mb-2"
-          value={playerId || ""}
+          value={activePlayerId || ""}
           onChange={(e) => {
             const selected = e.target.value;
             console.log("🧩 Selected new key from dropdown:", selected);
-            setPlayerId?.(selected);
+            setActivePlayerId?.(selected);
           }}
           style={{ fontFamily: "monospace", fontSize: "0.9em" }}
         >
@@ -138,11 +138,18 @@ const Player = ({ playerId, setPlayerId }) => {
           className="btn btn-outline-primary btn-sm"
           onClick={generateNewKey}
         >
-          Generate New Key
+          Generate New PlayerId
         </button>
       </div>
-
-      {nostrDetected && nostrPubkey && playerId === nostrPubkey && (
+      {console.log(
+        "activePlayerId",
+        activePlayerId,
+        "nostrPubkey",
+        nostrPubkey,
+        "nostrDetected",
+        nostrDetected
+      )}
+      {nostrDetected && nostrPubkey && activePlayerId === nostrPubkey && (
         <button
           className="btn btn-outline-danger btn-sm mt-2"
           onClick={logoutNostrExtension}

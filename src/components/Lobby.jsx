@@ -261,10 +261,12 @@ const Lobby = ({
     const isPrivateGame = selectedGamestate.isPrivate;
     console.log("Is private game:", isPrivateGame);
     if (isPrivateGame) {
+      console.log("Private game detected.");
       const isPlayerAllowed =
         selectedGamestate.allowedPlayers?.includes(playerId);
       if (!isPlayerAllowed) {
-        setInvitedError("❌ You are not invited to join this private game.");
+        console.log("Player not invited to  private game.");
+        alert("❌ You are not invited to join this private game.");
         return;
       } else {
         //setInvitedError(""); // Clear error if player is allowed
@@ -272,6 +274,12 @@ const Lobby = ({
         if (!nostrPubkey) {
           alert(
             "❌ Login with a nostr extension like nos2x to join private games."
+          );
+          return;
+        }
+        if (nostrPubkey !== playerId) {
+          alert(
+            "❌ Your nostr id doesn't match the invitation playerId. Can't join private game!"
           );
           return;
         }
@@ -545,7 +553,7 @@ const Lobby = ({
                   onChange={() => setIsPrivateGame(!isPrivateGame)}
                 />
                 <label className="form-check-label" htmlFor="privateGameCheck">
-                  Private Game
+                  Create Private Game
                 </label>
               </div>
 
@@ -630,6 +638,39 @@ const Lobby = ({
                   style={{ fontSize: "14px", lineHeight: "1.2" }}
                 />
               </div>
+
+              {selectedGamestate.isPrivate &&
+                Array.isArray(selectedGamestate.allowedPlayers) &&
+                selectedGamestate.allowedPlayers.length > 0 && (
+                  <div className="inviteLinks mb-3">
+                    <h5>🔗 Invite Links:</h5>
+                    <ul className="list-group">
+                      {selectedGamestate.allowedPlayers.map((id, i) => {
+                        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&gameId=${selectedGamestate.gameId}&playerId=${id}`;
+                        return (
+                          <li key={id} className="list-group-item">
+                            <strong>Player {i + 1}:</strong>
+                            <br />
+                            <code style={{ wordBreak: "break-all" }}>
+                              {inviteUrl}
+                            </code>
+                            <br />
+                            <button
+                              className="btn btn-sm btn-outline-primary mt-1"
+                              onClick={() => {
+                                navigator.clipboard.writeText(inviteUrl);
+                                alert("Copied to clipboard!");
+                              }}
+                            >
+                              Copy Link
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
               {lobbyGames.length > 0 ? (
                 <ul>
                   {lobbyGames.map((game, index) => (
@@ -682,7 +723,7 @@ const Lobby = ({
                           {Object.keys(game.players || {}).length} /{" "}
                           {game.instance?.maxPlayers || "N/A"}
                         </div>
-                        {game.players.length > 0 ? (
+                        {game.players.length > 0 && (
                           <ul>
                             {game.players.map((playerId, index) => (
                               <li key={`${playerId}-${index}`}>
@@ -695,8 +736,6 @@ const Lobby = ({
                               </li>
                             ))}
                           </ul>
-                        ) : (
-                          <div>No players connected yet</div>
                         )}
 
                         {/* {game.players &&

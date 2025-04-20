@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Player from "./components/Player";
+import Players from "./components/Players";
 import Dashboard from "./components/Dashboard";
 import "./App.css";
 //import "bootstrap/dist/css/bootstrap.min.css";
@@ -36,7 +36,7 @@ window.addEventListener("unhandledrejection", function (event) {
 });
 
 const App = () => {
-  const [playerId, setPlayerId] = useState(null);
+  const [activePlayerId, setActivePlayerId] = useState(null);
   const [gamesToInit, setGamesToInit] = useState(new Map());
   const [sendMessageToUrl, setSendMessageToUrl] = useState(() => () => {});
   const [addRelayConnections, setAddRelayConnections] = useState([]);
@@ -59,6 +59,7 @@ const App = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteGameId, setInviteGameId] = useState(null);
   const [urlParams, setUrlParams] = useState({});
+  const [allKeys, setAllKeys] = useState([]);
   const { nostrPubkey } = useNostrExtensionKey();
 
   const {
@@ -69,21 +70,37 @@ const App = () => {
     handleSendMessage,
     gameInviteMessages,
   } = useMessages(
-    playerId,
+    activePlayerId,
     connections,
     sendMessageToUrl,
     setAddRelayConnections,
     setRemoveRelayConnections,
-    setSignedInLobbies
+    setSignedInLobbies,
+    showInviteModal
   );
 
   useEffect(() => {
-    console.log("Player ID from IrisDB:", irisPlayerId);
-    console.log("Player ID:", playerId);
-    if (playerId && playerId !== irisPlayerId) {
-      setIrisPlayerId(playerId);
+    if (!activePlayerId) {
+      if (nostrPubkey) {
+        console.log("🎯 No activePlayerId — using nostrPubkey:", nostrPubkey);
+        setActivePlayerId(nostrPubkey);
+      } else if (irisPlayerId) {
+        console.log("🎯 No activePlayerId — using irisPlayerId:", irisPlayerId);
+        setActivePlayerId(irisPlayerId);
+      } else if (allKeys.length > 0) {
+        console.log("🎯 No activePlayerId — using allKeys[0]:", allKeys[0]);
+        setActivePlayerId(allKeys[0]);
+      }
     }
-  }, [playerId, irisPlayerId, setIrisPlayerId]);
+  }, [activePlayerId, nostrPubkey, irisPlayerId, allKeys]);
+
+  useEffect(() => {
+    console.log("Player ID from IrisDB:", irisPlayerId);
+    console.log("Player ID:", activePlayerId);
+    if (activePlayerId && activePlayerId !== irisPlayerId) {
+      setIrisPlayerId(activePlayerId);
+    }
+  }, [activePlayerId, irisPlayerId, setIrisPlayerId]);
 
   useEffect(() => {
     setLobbyConnectUrl(pognClientConfigs.LOBBY_WS_URL);
@@ -97,7 +114,7 @@ const App = () => {
       );
       return;
     }
-    if (!playerId) {
+    if (!activePlayerId) {
       console.warn("⚠️ Player ID not set. Skipping lobby connecting...");
       return;
     }
@@ -114,7 +131,7 @@ const App = () => {
 
     setAddRelayConnections(initialLobbyUrls);
     setLobbyConnectionsInit(true);
-  }, [lobbyConnectionsInit, playerId]);
+  }, [lobbyConnectionsInit, activePlayerId]);
 
   useEffect(() => {
     console.log("🔥 App.jsx Re-Rendered!");
@@ -151,31 +168,36 @@ const App = () => {
     )
   );
 
-  const inviteDetected = useRef(false);
+  const hasInviteUrlBeenProcessed = useRef(false);
+  const hasInviteModalBeenShown = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const parsed = Object.fromEntries(params.entries());
 
-    if (parsed.invite === "true") {
-      console.log("🔑 Invite link detected. Storing URL params...");
-      inviteDetected.current = true;
+    if (parsed.invite === "true" && !hasInviteUrlBeenProcessed.current) {
+      console.log("🔑 Invite URL detected. Processing...");
+      hasInviteUrlBeenProcessed.current = true;
+
       setUrlParams(parsed);
-      setPlayerId(parsed.playerId);
+      setAllKeys((prev) =>
+        prev.includes(parsed.playerId) ? prev : [...prev, parsed.playerId]
+      );
+      setActivePlayerId(parsed.playerId);
     }
   }, []);
 
   useEffect(() => {
     if (
-      inviteDetected.current &&
-      playerId &&
+      hasInviteUrlBeenProcessed.current &&
+      !hasInviteModalBeenShown.current &&
       connections.get("lobby1")?.readyState === 1
     ) {
-      console.log("🟢 Invite modal conditions met, showing modal.");
+      console.log("🟢 Showing invite modal...");
+      hasInviteModalBeenShown.current = true;
       setShowInviteModal(true);
-      inviteDetected.current = false; // only run once
     }
-  }, [playerId, connections]);
+  }, [connections]);
 
   return (
     <ErrorBoundary>
@@ -190,21 +212,29 @@ const App = () => {
             urlParams={urlParams}
             onJoinWithId={(id) => {
               setShowInviteModal(false);
-              setPlayerId(id);
+              setActivePlayerId(id);
             }}
-            setPlayerId={setPlayerId}
+            setActivePlayerId={setActivePlayerId}
             sendMessage={(id, msg) => handleSendMessage(id, msg)}
             lastGameInviteMessage={gameInviteMessages?.slice(-1)[0] || {}}
             connections={connections}
+            allKeys={allKeys}
+            setAllKeys={setAllKeys}
           />
         )}
-      {/* Block the rest of the app while the modal is active */}
-      {/* {!showInviteModal && ( */}
+
       <div className="container mt-5">
         <h1>POGN Client</h1>
         <h2 className="mt-2">Poker and Other Game On NOSTR</h2>
-        <Player playerId={playerId} setPlayerId={setPlayerId} />
-        {playerId && <Dashboard playerName="Player" playerId={playerId} />}
+        <Players
+          activePlayerId={activePlayerId}
+          setActivePlayerId={setActivePlayerId}
+          allKeys={allKeys}
+          setAllKeys={setAllKeys}
+        />
+        {activePlayerId && (
+          <Dashboard playerName="Player" playerId={activePlayerId} />
+        )}
         <div>
           {/* {connections.size > 0 ? (
             <> */}
@@ -220,10 +250,6 @@ const App = () => {
             selectedRelayId={selectedRelayId}
             setSelectedRelayId={setSelectedRelayId}
           />
-          {/* </>
-          ) : (
-            <p>No connections open...</p>
-          )} */}
         </div>
 
         <div className="mt-3 w-100 text-start">
@@ -271,7 +297,7 @@ const App = () => {
                       type: "lobby",
                       action: "createLobby",
                       lobbyId: createLobbyId,
-                      playerId,
+                      activePlayerId,
                     },
                     uuid: uuidv4(),
                     relayId: selectedConnectionId,
@@ -366,7 +392,7 @@ const App = () => {
             >
               <Lobby
                 lobbyId={id}
-                playerId={playerId}
+                playerId={activePlayerId}
                 sendMessage={(msg) => handleSendMessage(id, msg)}
                 message={lobbyMessages[id]?.slice(-1)[0] || {}}
                 connectionUrl={conn.url}
@@ -381,13 +407,13 @@ const App = () => {
             </div>
           ))}
         </div>
-        {console.log("Player ID", playerId)}
+        {console.log("Player ID", activePlayerId)}
         {console.log("Games to init", gamesToInit)}
         {console.log("Game connections ready", gameConnectionsReady)}
-        {/* {playerId && gamesToInit.size > 0 ? ( */}
-        {playerId ? (
+        {/* {activePlayerId && gamesToInit.size > 0 ? ( */}
+        {activePlayerId ? (
           <GameConsole
-            playerId={playerId}
+            playerID={activePlayerId}
             message={Object.values(gameMessages).flat().slice(-1)[0] || {}}
             sendMessage={(id, msg) => handleSendMessage(id, msg)}
             sendLobbyMessage={(id, msg) => handleSendMessage(id, msg)}

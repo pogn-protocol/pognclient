@@ -3,18 +3,22 @@ import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { JsonView } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
+
 const GameInviteModal = ({
   isOpen,
   onClose,
   urlParams,
-  setPlayerId,
+  setActivePlayerId,
   sendMessage,
   lastGameInviteMessage,
   connections,
+  setShowInviteModal,
+  setAllKeys,
+  allKeys,
+  activePlayerId,
 }) => {
-  const { nostrDetected, nostrPubkey, setNostrPubkey } = useNostrExtensionKey();
+  const { nostrDetected, nostrPubkey, loginNostr } = useNostrExtensionKey();
 
-  const [customId, setCustomId] = useState("");
   const [pendingJoin, setPendingJoin] = useState(false);
   const [nostrLogin, setNostrLogin] = useState(false);
   const [pubkey, setPubkey] = useState(nostrPubkey); // Store the public key in state
@@ -52,13 +56,11 @@ const GameInviteModal = ({
   }, [urlParams, connections, sentGameInvite, sendMessage]);
 
   useEffect(() => {
-    //return if empty object
     if (
       !lastGameInviteMessage ||
       Object.keys(lastGameInviteMessage).length === 0
     )
       return;
-    if (verifiedGameDetails) return;
     console.log(
       "GameInviteModal lastGameInviteMessage:",
       lastGameInviteMessage
@@ -66,7 +68,24 @@ const GameInviteModal = ({
 
     const { payload } = lastGameInviteMessage;
     const { type, action, gameId, playerId } = payload;
-    //check if lastGameInviteMessage gameId is the same as gameInviteId
+    if (action === "refreshLobby") {
+      console.log("✅ Game invite refreshLobby: " + lastGameInviteMessage);
+      const { lobbyGames = [] } = payload;
+      const invitedGameId = urlParams?.gameId;
+      const invitedPlayerId = urlParams?.playerId;
+
+      const game = lobbyGames.find((g) => g.gameId === invitedGameId);
+      const isPlayerInGame = game?.players?.includes(invitedPlayerId);
+
+      if (game && isPlayerInGame) {
+        console.log("✅ Player is now in the invited game:", invitedGameId);
+        alert("🎉 Joined private game successfully! Login to lobby to play.");
+        onClose(); // ✅ Close the modal
+      } else {
+        console.warn("👀 Still waiting for player to be in game...");
+      }
+    }
+    if (verifiedGameDetails) return;
     if (action === "gameInviteError") {
       console.log("❌ Game invite error: ", lastGameInviteMessage);
       return;
@@ -79,56 +98,65 @@ const GameInviteModal = ({
 
       return;
     }
-    if (action === "refreshLobby") {
-      //   alert("✅ Refresh the damn lobby!");
-      //   return;
-      onClose();
-    }
   }, [lastGameInviteMessage, verifiedGameDetails]);
 
   const handleJoinPrivateGame = async () => {
     if (!window.nostr) return;
-
     setPendingJoin(true);
     try {
-      const pubkey = await window.nostr.getPublicKey(); // ✅ get pubkey directly
-      if (pubkey === urlParams.playerId) {
-        console.log("✅ Authenticated with Nostr extension:", pubkey);
-        alert(" ✅ Joining private game!");
-        setPlayerId(pubkey);
-        setNostrPubkey(pubkey); // Store the pubkey in local state
-        setNostrLogin(true);
-        setPubkey(pubkey);
-        console.log("urlParams", urlParams);
-        sendMessage("lobby1", {
-          payload: {
-            type: "lobby",
-            lobbyId: "lobby1",
-            action: "joinGame",
-            playerId: pubkey,
-            gameId: urlParams.gameId,
-          },
-        });
-      } else {
-        alert(
-          " ❌ Your nostr id doesn't match the invitation playerId. Can't join private game!"
-        );
-        return;
-      }
+      await loginNostr();
     } catch (e) {
       console.warn("Auth private game join failed:", e);
       alert("❌ Auth private game join failed.");
-    } finally {
-      //onClose(); // ✅ Close modal on success
-      //(false);
     }
   };
 
-  //   const handleJoinWithCustomId = () => {
-  //     if (!customId.trim()) return;
-  //     setPlayerId(customId.trim());
-  //     onClose();
-  //   };
+  useEffect(() => {
+    if (!pendingJoin) return;
+    if (!nostrPubkey) return;
+
+    console.log("🔐 Updated nostrPubkey:", nostrPubkey);
+
+    if (nostrPubkey === urlParams.playerId) {
+      console.log("✅ Authenticated with Nostr extension:", nostrPubkey);
+      setActivePlayerId(nostrPubkey);
+      setAllKeys((prev) =>
+        prev.includes(nostrPubkey) ? prev : [...prev, nostrPubkey]
+      );
+
+      sendMessage("lobby1", {
+        payload: {
+          type: "lobby",
+          lobbyId: "lobby1",
+          action: "joinGame",
+          playerId: nostrPubkey,
+          gameId: urlParams.gameId,
+        },
+      });
+    } else {
+      alert("❌ Your nostr ID doesn't match the invitation.");
+    }
+
+    setPendingJoin(false);
+  }, [nostrPubkey]);
+
+  const onCancel = () => {
+    setPendingJoin(false);
+    setSentGameInvite(false);
+    setVerifiedGameDetails(null);
+    setNostrLogin(false);
+    setActivePlayerId(null);
+
+    setAllKeys((prev) => {
+      const newKeys = prev.filter((key) => key !== urlParams.playerId);
+      console.log(
+        "➖ Removed activePlayerId from allKeys:",
+        urlParams.playerId
+      );
+      return newKeys;
+    });
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -146,7 +174,7 @@ const GameInviteModal = ({
             <button
               type="button"
               className="btn-close"
-              onClick={onClose}
+              onClick={onCancel}
               aria-label="Close"
             ></button>
           </div>
@@ -173,7 +201,7 @@ const GameInviteModal = ({
               </div>
             ) : (
               <p className="text-danger text-sm mb-2">
-                ❌ GameInvite not verified by server.
+                ❌ GameInvite not verified by server. Does the game exist?
               </p>
             )}
 
@@ -212,7 +240,7 @@ const GameInviteModal = ({
               </div>
             )}
 
-            <button className="btn btn-secondary w-100" onClick={onClose}>
+            <button className="btn btn-secondary w-100" onClick={onCancel}>
               Cancel
             </button>
           </div>

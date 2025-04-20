@@ -7,7 +7,8 @@ export default function useMessages(
   sendMessageToUrl,
   setAddRelayConnections,
   setRemoveRelayConnections,
-  setSignedInLobbies
+  setSignedInLobbies,
+  showInviteModal
 ) {
   const [messages, setMessages] = useState({});
   const [lobbyMessages, setLobbyMessages] = useState({});
@@ -67,7 +68,7 @@ export default function useMessages(
         if (type === "lobby" && action !== "refreshLobby") return;
         console.log("Game invite message received:", message);
         setGameInviteMessages((prev) => [...prev, message]);
-        return;
+        //return;
       }
 
       if (type === "lobby") {

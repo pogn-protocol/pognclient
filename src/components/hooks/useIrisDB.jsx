@@ -1,16 +1,7 @@
 // hooks/useIrisDB.jsx
 import { useLocalState } from "irisdb-hooks";
-import { useEffect } from "react";
-import { useNostrExtensionKey } from "./useNostrExtensionKey";
 export const useIrisPlayerId = (relayId, wsUrl) => {
   const [playerId, setPlayerId] = useLocalState("pogn/playerId", "");
-  // const [rawPlayerId, _setPlayerId] = useLocalState("pogn/playerId", "");
-
-  // const playerId =
-  //   typeof rawPlayerId === "string" ? rawPlayerId : String(rawPlayerId || "");
-  // const setPlayerId = (val) =>
-  //   _setPlayerId(typeof val === "string" ? val : String(val || ""));
-  // const { nostrPubkey } = useNostrExtensionKey();
 
   // useEffect(() => {
   //   if (!playerId || !wsUrl.startsWith("ws")) return;
