@@ -15,7 +15,11 @@ const Lobby = ({
   signedInLobbies,
   setSignedInLobbies,
   nostrPubkey,
+  follows = [],
+  followProfiles = {},
 }) => {
+  console.log("Lobby follows", follows);
+  console.log("followProfiles", followProfiles);
   const [signedIntoLobby, setSignedIntoLobby] = useState(false);
   const [lobbyGames, setLobbyGames] = useState([]);
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -38,6 +42,7 @@ const Lobby = ({
   const [maxPlayers, setMaxPlayers] = useState(1); // Default to 2 players
   const [invitedPlayers, setInvitedPlayers] = useState([]); // Array to hold invited players
   const [invitedError, setInvitedError] = useState("");
+  const [followSearch, setFollowSearch] = useState("");
 
   const isSignedIn = signedInLobbies.has(lobbyId);
 
@@ -557,6 +562,170 @@ const Lobby = ({
                 </label>
               </div>
 
+              {/* {isPrivateGame && follows.length > 0 && (
+                <div className="mb-3">
+                  <h6>Select Players to Invite:</h6>
+                  <div
+                    style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
+                  >
+                    {follows.slice(0, 5).map((f) => {
+                      const profile = followProfiles[f] || {};
+                      const name =
+                        profile.display_name || profile.name || f.slice(0, 12);
+                      const pic = profile.picture;
+
+                      const isSelected = invitedPlayers.includes(f);
+                      return (
+                        <div
+                          key={f}
+                          onClick={() => {
+                            setInvitedPlayers((prev) =>
+                              isSelected
+                                ? prev.filter((id) => id !== f)
+                                : [...prev, f]
+                            );
+                          }}
+                          style={{
+                            cursor: "pointer",
+                            border: isSelected
+                              ? "2px solid green"
+                              : "1px solid #ccc",
+                            padding: "6px",
+                            borderRadius: "6px",
+                            textAlign: "center",
+                            width: "100px",
+                          }}
+                        >
+                          <img
+                            src={pic || "/fallback-avatar.png"}
+                            alt="pfp"
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                            }}
+                          />
+                          <div style={{ fontSize: "0.75em", marginTop: "4px" }}>
+                            {name}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )} */}
+              {isPrivateGame && follows.length > 0 && (
+                <div className="mb-3">
+                  <h6>Invite Players:</h6>
+
+                  <input
+                    type="text"
+                    placeholder="Search follows..."
+                    className="form-control mb-2"
+                    value={followSearch}
+                    onChange={(e) => setFollowSearch(e.target.value)}
+                  />
+
+                  <div
+                    style={{
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "10px",
+                    }}
+                  >
+                    {follows
+                      .filter((f) => {
+                        const profile = followProfiles[f] || {};
+                        const name = profile.display_name || profile.name || "";
+                        return (
+                          f !== playerId &&
+                          (!followSearch ||
+                            name
+                              .toLowerCase()
+                              .includes(followSearch.toLowerCase()) ||
+                            f.startsWith(followSearch))
+                        );
+                      })
+                      .slice(0, 100)
+                      .map((f) => {
+                        const profile = followProfiles[f] || {};
+                        const name =
+                          profile.display_name ||
+                          profile.name ||
+                          f.slice(0, 12);
+                        const pic = profile.picture;
+                        const isSelected = invitedPlayers.includes(f);
+
+                        return (
+                          <div
+                            key={f}
+                            onClick={() => {
+                              setInvitedPlayers((prev) => {
+                                // Always include the current player at index 0
+                                const others = prev.slice(1);
+                                const isSelected = others.includes(f);
+                                const maxOthers = maxPlayers - 1;
+
+                                if (isSelected) {
+                                  return [
+                                    playerId,
+                                    ...others.filter((id) => id !== f),
+                                  ];
+                                } else {
+                                  if (others.length < maxOthers) {
+                                    return [playerId, ...others, f];
+                                  } else {
+                                    // Replace the last selected with the new one
+                                    return [
+                                      playerId,
+                                      ...others.slice(0, maxOthers - 1),
+                                      f,
+                                    ];
+                                  }
+                                }
+                              });
+                            }}
+                            style={{
+                              cursor: "pointer",
+                              border: isSelected
+                                ? "2px solid green"
+                                : "1px solid #ccc",
+                              padding: "6px",
+                              borderRadius: "6px",
+                              textAlign: "center",
+                              width: "100px",
+                              backgroundColor: isSelected ? "#e6ffe6" : "white",
+                            }}
+                          >
+                            <img
+                              src={pic || "/fallback-avatar.png"}
+                              alt="pfp"
+                              style={{
+                                width: "48px",
+                                height: "48px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                              }}
+                            />
+                            <div
+                              style={{ fontSize: "0.75em", marginTop: "4px" }}
+                            >
+                              {name}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <div className="mt-2" style={{ fontSize: "0.9em" }}>
+                    Selected: {invitedPlayers.length} / {maxPlayers - 1}
+                  </div>
+                </div>
+              )}
+
               {isPrivateGame && (
                 <>
                   <div className="mb-2">
@@ -638,8 +807,103 @@ const Lobby = ({
                   style={{ fontSize: "14px", lineHeight: "1.2" }}
                 />
               </div>
+              {/* {isPrivateGame && follows.length > 0 && (
+                <div className="mb-3">
+                  <h6>Invite Players:</h6>
 
-              {selectedGamestate.isPrivate &&
+                  <input
+                    type="text"
+                    placeholder="Search follows..."
+                    className="form-control mb-2"
+                    value={followSearch}
+                    onChange={(e) => setFollowSearch(e.target.value)}
+                  />
+
+                  <div
+                    style={{
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "10px",
+                    }}
+                  >
+                    {follows
+                      .filter((f) => {
+                        const profile = followProfiles[f] || {};
+                        const name = profile.display_name || profile.name || "";
+                        return (
+                          f !== playerId &&
+                          invitedPlayers.length < maxPlayers &&
+                          (!followSearch ||
+                            name
+                              .toLowerCase()
+                              .includes(followSearch.toLowerCase()) ||
+                            f.startsWith(followSearch))
+                        );
+                      })
+                      .slice(0, 100) // cap rendering in case you have a lot
+                      .map((f) => {
+                        const profile = followProfiles[f] || {};
+                        const name =
+                          profile.display_name ||
+                          profile.name ||
+                          f.slice(0, 12);
+                        const pic = profile.picture;
+                        const isSelected = invitedPlayers.includes(f);
+
+                        return (
+                          <div
+                            key={f}
+                            onClick={() => {
+                              setInvitedPlayers((prev) =>
+                                isSelected
+                                  ? prev.filter((id) => id !== f)
+                                  : prev.length < maxPlayers &&
+                                    !prev.includes(f)
+                                  ? [...prev, f]
+                                  : prev
+                              );
+                            }}
+                            style={{
+                              cursor: "pointer",
+                              border: isSelected
+                                ? "2px solid green"
+                                : "1px solid #ccc",
+                              padding: "6px",
+                              borderRadius: "6px",
+                              textAlign: "center",
+                              width: "100px",
+                              backgroundColor: isSelected ? "#e6ffe6" : "white",
+                            }}
+                          >
+                            <img
+                              src={pic || "/fallback-avatar.png"}
+                              alt="pfp"
+                              style={{
+                                width: "48px",
+                                height: "48px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                              }}
+                            />
+                            <div
+                              style={{ fontSize: "0.75em", marginTop: "4px" }}
+                            >
+                              {name}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <div className="mt-2" style={{ fontSize: "0.9em" }}>
+                    Selected: {invitedPlayers.length} / {maxPlayers - 1}
+                  </div>
+                </div>
+              )} */}
+
+              {/* {selectedGamestate.isPrivate &&
                 Array.isArray(selectedGamestate.allowedPlayers) &&
                 selectedGamestate.allowedPlayers.length > 0 && (
                   <div className="inviteLinks mb-3">
@@ -669,7 +933,7 @@ const Lobby = ({
                       })}
                     </ul>
                   </div>
-                )}
+                )} */}
 
               {lobbyGames.length > 0 ? (
                 <ul>

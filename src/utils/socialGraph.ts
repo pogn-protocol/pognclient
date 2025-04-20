@@ -1,0 +1,350 @@
+import {SocialGraph, NostrEvent, SerializedSocialGraph} from "nostr-social-graph"
+import {NDKSubscription, NDKUserProfile} from "@nostr-dev-kit/ndk"
+import {LRUCache} from "typescript-lru-cache"
+import {VerifiedEvent} from "nostr-tools"
+import {profileCache} from "./memcache"
+import debounce from "lodash/debounce"
+import throttle from "lodash/throttle"
+import localForage from "localforage"
+import {localState} from "irisdb/src"
+import {ndk} from "@/utils/ndk"
+import Fuse from "fuse.js"
+
+const DEFAULT_SOCIAL_GRAPH_ROOT =
+  "4523be58d395b1b196a9b8c82b038b6895cb02b683d0c253a955068dba1facd0"
+
+let instance = new SocialGraph(DEFAULT_SOCIAL_GRAPH_ROOT)
+let isInitialized = false
+
+let hidePostsByMutedMoreThanFollowed = true
+localState.get("settings/hidePostsByMutedMoreThanFollowed").on((v) => {
+  hidePostsByMutedMoreThanFollowed = v as boolean
+})
+
+async function initializeInstance(publicKey?: string) {
+  if (isInitialized) {
+    console.log("setting root", publicKey)
+    instance.setRoot(publicKey ?? DEFAULT_SOCIAL_GRAPH_ROOT)
+    return
+  }
+  isInitialized = true
+  const data = await localForage.getItem("socialGraph")
+  if (data && typeof data === "object") {
+    try {
+      instance = new SocialGraph(
+        publicKey ?? DEFAULT_SOCIAL_GRAPH_ROOT,
+        data as SerializedSocialGraph
+      )
+    } catch (e) {
+      console.error("error deserializing", e)
+      await localForage.removeItem("socialGraph")
+      const {default: preCrawledGraph} = await import(
+        "nostr-social-graph/data/socialGraph.json"
+      )
+      instance = new SocialGraph(
+        publicKey ?? DEFAULT_SOCIAL_GRAPH_ROOT,
+        preCrawledGraph as unknown as SerializedSocialGraph
+      )
+    }
+  } else {
+    console.log("no social graph found")
+    await localForage.removeItem("socialGraph")
+    const {default: preCrawledGraph} = await import(
+      "nostr-social-graph/data/socialGraph.json"
+    )
+    instance = new SocialGraph(
+      publicKey ?? DEFAULT_SOCIAL_GRAPH_ROOT,
+      preCrawledGraph as unknown as SerializedSocialGraph
+    )
+  }
+}
+
+const MAX_SOCIAL_GRAPH_SERIALIZE_SIZE = 1000000
+const throttledSave = throttle(async () => {
+  try {
+    const serialized = instance.serialize(MAX_SOCIAL_GRAPH_SERIALIZE_SIZE)
+    await localForage.setItem("socialGraph", serialized)
+    console.log("Saved social graph of size", instance.size())
+  } catch (e) {
+    console.error("failed to serialize SocialGraph or UniqueIds", e)
+    console.log("social graph size", instance.size())
+  }
+}, 10000)
+
+const debouncedRemoveNonFollowed = debounce(() => {
+  const removedCount = instance.removeMutedNotFollowedUsers()
+  console.log("Removing", removedCount, "muted users not followed by anyone")
+  throttledSave()
+}, 11000)
+
+export const handleSocialGraphEvent = (evs: NostrEvent | Array<NostrEvent>) => {
+  instance.handleEvent(evs)
+  throttledSave()
+}
+
+let sub: NDKSubscription | undefined
+
+export type SearchResult = {
+  name: string
+  pubKey: string
+  nip05?: string
+}
+
+const latestProfileEvents = new Map<string, number>()
+
+let searchIndex: Fuse<SearchResult> = new Fuse<SearchResult>([], {
+  keys: ["name", "nip05"],
+  includeScore: true,
+})
+
+async function initializeSearchIndex() {
+  console.time("fuse init")
+  const {default: profileJson} = await import("nostr-social-graph/data/profileData.json")
+  const processedData = [] as SearchResult[]
+  profileJson.forEach((v) => {
+    if (v[0] && v[1]) {
+      processedData.push({
+        pubKey: v[0],
+        name: v[1],
+        nip05: v[2] || undefined,
+      })
+
+      let pictureUrl = v[3]
+      if (pictureUrl && !pictureUrl.startsWith("http://")) {
+        pictureUrl = `https://${pictureUrl}`
+      }
+      profileCache.set(v[0], {username: v[1], picture: pictureUrl || undefined})
+    }
+  })
+
+  searchIndex = new Fuse<SearchResult>(processedData, {
+    keys: ["name", "nip05"],
+    includeScore: true,
+  })
+  console.timeEnd("fuse init")
+}
+
+initializeSearchIndex().catch(console.error)
+
+export {searchIndex}
+
+export function handleProfile(pubKey: string, profile: NDKUserProfile) {
+  queueMicrotask(() => {
+    const lastSeen = latestProfileEvents.get(pubKey) || 0
+    if (profile.created_at && profile.created_at > lastSeen) {
+      latestProfileEvents.set(pubKey, profile.created_at)
+      const name = String(profile.name || profile.username)
+      const nip05 = profile.nip05
+      if (name) {
+        // not sure if this remove is efficient?
+        // should we have our internal map and reconstruct the searchIndex from it with debounce?
+        searchIndex.remove((profile) => profile.pubKey === pubKey)
+        searchIndex.add({name, pubKey, nip05})
+      }
+    }
+  })
+}
+
+export function getFollowLists(myPubKey: string, missingOnly = true, upToDistance = 1) {
+  const toFetch = new Set<string>()
+
+  // Function to add users to toFetch set
+  const addUsersToFetch = (users: Set<string>, currentDistance: number) => {
+    for (const user of users) {
+      if (!missingOnly || instance.getFollowedByUser(user).size === 0) {
+        toFetch.add(user)
+      }
+    }
+
+    // If we haven't reached the upToDistance, continue to the next level
+    if (currentDistance < upToDistance) {
+      for (const user of users) {
+        const nextLevelUsers = instance.getFollowedByUser(user)
+        addUsersToFetch(nextLevelUsers, currentDistance + 1)
+      }
+    }
+  }
+
+  // Start with the user's direct follows
+  const myFollows = instance.getFollowedByUser(myPubKey)
+  addUsersToFetch(myFollows, 1)
+
+  console.log("fetching", toFetch.size, missingOnly ? "missing" : "total", "follow lists")
+
+  const fetchBatch = (authors: string[]) => {
+    const sub = ndk().subscribe(
+      {
+        kinds: [3, 10000],
+        authors: authors,
+      },
+      {closeOnEose: true}
+    )
+    sub.on("event", (e) => {
+      handleSocialGraphEvent(e as unknown as VerifiedEvent)
+      debouncedRemoveNonFollowed()
+    })
+  }
+
+  const processBatch = () => {
+    const batch = [...toFetch].slice(0, 500)
+    if (batch.length > 0) {
+      fetchBatch(batch)
+      batch.forEach((author) => toFetch.delete(author))
+      if (toFetch.size > 0) {
+        setTimeout(processBatch, 5000)
+      }
+    }
+  }
+
+  processBatch()
+}
+
+function getMissingFollowLists(myPubKey: string) {
+  getFollowLists(myPubKey, true)
+}
+
+const throttledRecalculate = throttle(
+  () => {
+    instance.recalculateFollowDistances()
+  },
+  10000,
+  {leading: true}
+)
+
+export const socialGraphLoaded = new Promise((resolve) => {
+  localState.get("user/publicKey").on(async (publicKey?: string) => {
+    await initializeInstance(publicKey)
+    resolve(true)
+    if (publicKey) {
+      sub?.stop()
+      sub = ndk().subscribe({
+        kinds: [3, 10000],
+        authors: [publicKey],
+        limit: 1,
+      })
+      let latestTime = 0
+      sub?.on("event", (ev) => {
+        if (ev.kind === 10000) {
+          handleSocialGraphEvent(ev as NostrEvent)
+          return
+        }
+        if (typeof ev.created_at !== "number" || ev.created_at < latestTime) {
+          return
+        }
+        latestTime = ev.created_at
+        handleSocialGraphEvent(ev as NostrEvent)
+        queueMicrotask(() => getMissingFollowLists(publicKey))
+        throttledRecalculate()
+      })
+    } else {
+      instance.setRoot(DEFAULT_SOCIAL_GRAPH_ROOT)
+    }
+  }, true)
+})
+
+let hideEventsByUnknownUsers = true
+localState.get("settings/hideEventsByUnknownUsers").on((v) => {
+  hideEventsByUnknownUsers = v as boolean
+})
+
+export const saveToFile = () => {
+  const data = instance.serialize()
+  const url = URL.createObjectURL(
+    new File([JSON.stringify(data)], "social_graph.json", {
+      type: "text/json",
+    })
+  )
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "social_graph.json"
+  a.click()
+}
+
+export const loadFromFile = (merge = false) => {
+  const input = document.createElement("input")
+  input.type = "file"
+  input.accept = ".json"
+  input.multiple = false
+  input.onchange = () => {
+    if (input.files?.length) {
+      const file = input.files[0]
+      file.text().then((json) => {
+        try {
+          const data = JSON.parse(json)
+          if (merge) {
+            instance.merge(new SocialGraph(instance.getRoot(), data))
+          } else {
+            instance = new SocialGraph(instance.getRoot(), data)
+          }
+        } catch (e) {
+          console.error("failed to load social graph from file:", e)
+        }
+      })
+    }
+  }
+  input.click()
+}
+
+export const downloadLargeGraph = () => {
+  fetch("https://files.iris.to/large_social_graph.json")
+    .then((response) => response.json())
+    .then((data) => {
+      instance = new SocialGraph(instance.getRoot(), data)
+      throttledSave()
+    })
+    .catch((error) => {
+      console.error("failed to load large social graph:", error)
+    })
+}
+
+export const loadAndMerge = () => loadFromFile(true)
+
+const cache = new LRUCache<string, boolean>({maxSize: 100})
+export const shouldHideAuthor = (pubKey: string, threshold = 1): boolean => {
+  if (hideEventsByUnknownUsers && instance.getFollowDistance(pubKey) >= 5) {
+    return true
+  }
+
+  if (!hidePostsByMutedMoreThanFollowed) {
+    return false
+  }
+
+  // Check if the result is already in the cache
+  if (cache.has(pubKey)) {
+    return cache.get(pubKey)!
+  }
+
+  const hasMuters = instance.getUserMutedBy(pubKey).size > 0
+
+  // for faster checks, if no one mutes, return false
+  if (!hasMuters) {
+    cache.set(pubKey, false)
+    return false
+  }
+
+  const userStats = instance.stats(pubKey)
+
+  // Sort numeric distances ascending
+  const distances = Object.keys(userStats)
+    .map(Number)
+    .sort((a, b) => a - b)
+
+  // Look at the smallest distance that has any followers/muters
+  for (const distance of distances) {
+    const {followers, muters} = userStats[distance]
+    if (followers + muters === 0) {
+      continue // No one at this distance has an opinion; skip
+    }
+
+    // If, at the closest distance with an opinion, muters >= followers => hide
+    const shouldHide = muters * threshold >= followers
+    cache.set(pubKey, shouldHide)
+    return shouldHide
+  }
+
+  // If no one anywhere follows or mutes, default to hide
+  cache.set(pubKey, true)
+  return true
+}
+
+export default () => instance

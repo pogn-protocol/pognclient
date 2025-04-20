@@ -14,6 +14,8 @@ import pognClientConfigs from "./pognClientConfigs";
 import { useIrisPlayerId } from "./components/hooks/useIrisDB";
 import { useNostrExtensionKey } from "./components/hooks/useNostrExtensionKey";
 import GameInviteModal from "./components/GameInviteModal";
+import useNostrProfile from "./components/hooks/useNostrProfile";
+import { useLocalState } from "irisdb-hooks";
 
 console.log("pognClientConfigs", pognClientConfigs);
 //
@@ -52,10 +54,11 @@ const App = () => {
     pognClientConfigs.LOBBY_WS_URL
   );
   const [connections, setConnections] = useState(new Map());
-  const [irisPlayerId, setIrisPlayerId] = useIrisPlayerId(
-    "lobby1",
-    pognClientConfigs.LOBBY_WS_URL
-  );
+  // const [irisPlayerId, setIrisPlayerId] = useIrisPlayerId(
+  //   "lobby1",
+  //   pognClientConfigs.LOBBY_WS_URL
+  // );
+  const [irisPlayerId, setIrisPlayerId] = useLocalState("user/publicKey", "");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteGameId, setInviteGameId] = useState(null);
   const [urlParams, setUrlParams] = useState({});
@@ -78,6 +81,8 @@ const App = () => {
     setSignedInLobbies,
     showInviteModal
   );
+
+  const { profile: nostrProfile, follows, followProfiles } = useNostrProfile();
 
   useEffect(() => {
     if (!activePlayerId) {
@@ -233,9 +238,15 @@ const App = () => {
           setAllKeys={setAllKeys}
         />
         {activePlayerId && (
-          <Dashboard playerName="Player" playerId={activePlayerId} />
+          <Dashboard
+            playerName="Player"
+            playerId={activePlayerId}
+            nostrProfile={nostrProfile}
+            follows={follows}
+            followProfiles={followProfiles}
+          />
         )}
-        <div>
+        <div className="mt-3">
           {/* {connections.size > 0 ? (
             <> */}
           <RelayManager
@@ -403,6 +414,8 @@ const App = () => {
                 setSignedInLobbies={setSignedInLobbies}
                 setAddRelayConnections={setAddRelayConnections}
                 nostrPubkey={nostrPubkey}
+                follows={follows}
+                followProfiles={followProfiles}
               />
             </div>
           ))}
