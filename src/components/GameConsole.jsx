@@ -12,6 +12,7 @@ import "react-json-view-lite/dist/index.css";
 import { verifyGameMessage } from "../utils/verifications";
 import "./css/gameConsole.css"; // Assuming you have a CSS file for styles
 import GameShell from "./GameShell"; // once, in
+import NoteGameResults from "./NoteGameResults"; // once, in
 
 const GameConsole = ({
   sendMessage,
@@ -23,10 +24,14 @@ const GameConsole = ({
   setGamesToInit,
   gameMessages,
   setRemoveRelayConnections,
+  nostrPubkey,
+  nostrProfile,
 }) => {
   const [gameStates, setGameStates] = useState(new Map());
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [gameMessagesSent, setGameMessagesSent] = useState({});
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [gameSummary, setGameSummary] = useState("");
 
   const sendGameMessage = (gameId, payload) => {
     console.log("sendGameMessage gameId payload:", gameId, payload);
@@ -202,6 +207,11 @@ const GameConsole = ({
         ...newState,
       });
       console.log(updatedMap);
+      if (newState.gameStatus === "complete") {
+        console.log(`🏁 Game ${gameId} is now complete!`);
+        setGameSummary(newState?.message || "No summary provided.");
+        setShowNoteModal(true);
+      }
       return updatedMap;
     });
   };
@@ -278,8 +288,43 @@ const GameConsole = ({
     }
   }, [connectedGames, selectedGameId]);
 
+  const postNote = async (note) => {
+    if (!activePlayerId) return;
+    const message = {
+      payload: {
+        type: "game",
+        action: "postNote",
+        playerId: playerId,
+        note,
+      },
+    };
+    handleSendMessage(playerId, message);
+    setShowNoteModal(false);
+  };
+
+  // useEffect(() => {
+  //   setGameSummary(
+  //     "6393af1ca36d28601253da410311747c0048574cf18389240a3dbb7a28484722 won the game against thems which is also id6393af1ca36d28601253da410311747c0048574cf18389240a3dbb7a28484722"
+  //   );
+  //   setShowNoteModal(true);
+  // }, []);
+
   return (
     <div className="gameConsole">
+      {showNoteModal && (
+        <NoteGameResults
+          playerId={playerId}
+          nostrPubkey={nostrPubkey}
+          nostrProfile={nostrProfile}
+          isOpen={true} // always true since it's wrapped in the guard
+          onClose={() => setShowNoteModal(false)}
+          onConfirm={postNote}
+          gameSummary={gameSummary}
+          sendMessage={sendMessage}
+          message={message}
+        />
+      )}
+
       <h1 className=" mb-4">Game Console</h1>
       <h4>Select a Game:</h4>
       <div

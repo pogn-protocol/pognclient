@@ -204,8 +204,35 @@ const App = () => {
     }
   }, [connections]);
 
+  // const [showNoteModal, setShowNoteModal] = useState(true);
+  // const postNote = async (note) => {
+  //   if (!activePlayerId) return;
+  //   const message = {
+  //     payload: {
+  //       type: "game",
+  //       action: "postNote",
+  //       playerId: activePlayerId,
+  //       note,
+  //     },
+  //   };
+  //   handleSendMessage(activePlayerId, message);
+  //   setShowNoteModal(false);
+  // };
+
   return (
     <ErrorBoundary>
+      {/* <NoteGameResults
+        playerId={activePlayerId}
+        nostrPubkey={nostrPubkey}
+        nostrProfile={nostrProfile}
+        follows={follows}
+        isOpen={showNoteModal}
+        onClose={() => setShowNoteModal(false)}
+        onConfirm={postNote}
+        gameSummary={`Player1 beat Player2 in Rock Paper Scissors!\nFinal move: Rock vs Scissors`}
+        sendMessage={(id, msg) => handleSendMessage(id, msg)}
+        message={Object.values(messages).flat().slice(-1)[0] || {}}
+      /> */}
       {showInviteModal &&
         Array.from(connections.values()).some(
           (conn) => conn.readyState === 1
@@ -427,7 +454,7 @@ const App = () => {
         {activePlayerId ? (
           <GameConsole
             playerID={activePlayerId}
-            message={Object.values(gameMessages).flat().slice(-1)[0] || {}}
+            message={Object.values(messages).flat().slice(-1)[0] || {}}
             sendMessage={(id, msg) => handleSendMessage(id, msg)}
             sendLobbyMessage={(id, msg) => handleSendMessage(id, msg)}
             gamesToInit={gamesToInit}
@@ -442,6 +469,8 @@ const App = () => {
             setGamesToInit={setGamesToInit}
             gameMessages={gameMessages}
             setRemoveRelayConnections={setRemoveRelayConnections}
+            nostrPubkey={nostrPubkey}
+            nostrProfile={nostrProfile}
           />
         ) : (
           <p>Game not started...</p>

@@ -123,8 +123,9 @@ const GameInviteModal = ({
       setAllKeys((prev) =>
         prev.includes(nostrPubkey) ? prev : [...prev, nostrPubkey]
       );
+      let lobbyId = urlParams.lobbyId || "lobby1";
 
-      sendMessage("lobby1", {
+      sendMessage(lobbyId, {
         payload: {
           type: "lobby",
           lobbyId: "lobby1",
