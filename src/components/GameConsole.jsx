@@ -309,6 +309,11 @@ const GameConsole = ({
   //   setShowNoteModal(true);
   // }, []);
 
+  const lastPostResultMessage = Object.values(messages)
+    .flat()
+    .reverse()
+    .find((msg) => msg?.payload?.action === "postGameResultConfirmed");
+
   return (
     <div className="gameConsole">
       {showNoteModal && (
@@ -321,7 +326,7 @@ const GameConsole = ({
           onConfirm={postNote}
           gameSummary={gameSummary}
           sendMessage={sendMessage}
-          message={message}
+          message={lastPostResultMessage || {}}
         />
       )}
 
