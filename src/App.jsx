@@ -471,6 +471,7 @@ const App = () => {
             setRemoveRelayConnections={setRemoveRelayConnections}
             nostrPubkey={nostrPubkey}
             nostrProfile={nostrProfile}
+            messages={messages}
           />
         ) : (
           <p>Game not started...</p>

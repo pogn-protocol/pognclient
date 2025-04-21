@@ -26,6 +26,7 @@ const GameConsole = ({
   setRemoveRelayConnections,
   nostrPubkey,
   nostrProfile,
+  messages,
 }) => {
   const [gameStates, setGameStates] = useState(new Map());
   const [selectedGameId, setSelectedGameId] = useState(null);
