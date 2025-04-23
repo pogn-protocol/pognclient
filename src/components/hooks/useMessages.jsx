@@ -6,11 +6,10 @@ export default function useMessages(
   connections,
   sendMessageToUrl,
   setAddRelayConnections,
-  setRemoveRelayConnections,
-  setSignedInLobbies,
-  showInviteModal
+  setRemoveRelayConnections
 ) {
   const [messages, setMessages] = useState({});
+  const [sentMessages, setSentMessages] = useState({});
   const [lobbyMessages, setLobbyMessages] = useState({});
   const [gameMessages, setGameMessages] = useState({});
   const [gameInviteMessages, setGameInviteMessages] = useState([]);
@@ -39,6 +38,14 @@ export default function useMessages(
 
       console.log(`🚀 Sending message to ${id}`, message);
       sendMessageToUrl(id, message);
+      setSentMessages((prev) => {
+        const updated = { ...prev };
+        if (!updated[id]) {
+          updated[id] = [];
+        }
+        updated[id].push(message);
+        return updated;
+      });
     },
     [connections, playerId, sendMessageToUrl]
   );
@@ -109,6 +116,7 @@ export default function useMessages(
 
   return {
     messages,
+    sentMessages,
     lobbyMessages,
     gameMessages,
     handleMessage,

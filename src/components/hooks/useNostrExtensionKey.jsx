@@ -18,10 +18,10 @@ export const useNostrExtensionKey = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const resetNostr = () => {
+  const logoutNostr = () => {
     console.log("🔄 Resetting Nostr state...");
     setNostrPubkey(null);
-    setNostrDetected(false);
+    //setNostrDetected(false);
   };
 
   const loginNostr = async () => {
@@ -43,7 +43,7 @@ export const useNostrExtensionKey = () => {
     nostrDetected,
     nostrPubkey,
     loginNostr,
-    resetNostr,
+    logoutNostr,
     setNostrPubkey,
   };
 };

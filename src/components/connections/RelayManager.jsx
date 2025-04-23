@@ -92,7 +92,7 @@ const RelayManager = ({
   }, [connections, selectedRelayId, setSelectedRelayId]);
 
   return (
-    <div className="relay-container d-flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
       {Array.from(connections.values()).map((relay) => (
         <RelayItem
           key={relay.id}

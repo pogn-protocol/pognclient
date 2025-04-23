@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocalState, useAuthors } from "irisdb-hooks";
 import { SimplePool } from "nostr-tools/pool";
-import { nip19 } from "nostr-tools";
 
 const relays = [
   "wss://relay.damus.io",
@@ -13,7 +12,7 @@ const relays = [
 
 const pool = new SimplePool();
 
-const useNostrProfile = () => {
+const useNostr = () => {
   const [irisPubkey] = useLocalState("user/publicKey", "");
   const [profile, setProfile] = useState(null);
   const [manualFollows, setManualFollows] = useState([]);
@@ -111,7 +110,7 @@ const useNostrProfile = () => {
     return () => sub.close();
   }, [allFollows.join()]); // use join() to trigger effect on key changes
 
-  return { profile, follows: allFollows, followProfiles };
+  return { nostrProfile: profile, follows: allFollows, followProfiles };
 };
 
-export default useNostrProfile;
+export default useNostr;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import "./css/lobby.css";
+import "../css/lobby.css";
 import { JsonView } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
-import generateAnimalName from "../utils/animalNames.js";
-import { verifyLobbyMessage } from "../utils/verifications.js";
+import generateAnimalName from "../../utils/animalNames.js";
+import { verifyLobbyMessage } from "../../utils/verifications.js";
 
 const Lobby = ({
   playerId,
@@ -17,6 +17,7 @@ const Lobby = ({
   nostrPubkey,
   follows = [],
   followProfiles = {},
+  LobbyMessagesUI,
 }) => {
   console.log("Lobby follows", follows);
   console.log("followProfiles", followProfiles);
@@ -515,15 +516,6 @@ const Lobby = ({
                   </option>
                 ))}
               </select>
-
-              {/* <select
-                id="gameTypeSelect"
-                value={selectedGameType}
-                onChange={(e) => setSelectedGameType(e.target.value)}
-              >
-                <option value="rock-paper-scissors" maPlayers="2">Rock Paper Scissors</option>
-                <option value="odds-and-evens" maxPlayers="2">Odds and Evens</option>
-              </select> */}
               <div style={{ marginBottom: "5px" }}>
                 <label
                   htmlFor="gameNameInput"
@@ -561,60 +553,6 @@ const Lobby = ({
                   Create Private Game
                 </label>
               </div>
-
-              {/* {isPrivateGame && follows.length > 0 && (
-                <div className="mb-3">
-                  <h6>Select Players to Invite:</h6>
-                  <div
-                    style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
-                  >
-                    {follows.slice(0, 5).map((f) => {
-                      const profile = followProfiles[f] || {};
-                      const name =
-                        profile.display_name || profile.name || f.slice(0, 12);
-                      const pic = profile.picture;
-
-                      const isSelected = invitedPlayers.includes(f);
-                      return (
-                        <div
-                          key={f}
-                          onClick={() => {
-                            setInvitedPlayers((prev) =>
-                              isSelected
-                                ? prev.filter((id) => id !== f)
-                                : [...prev, f]
-                            );
-                          }}
-                          style={{
-                            cursor: "pointer",
-                            border: isSelected
-                              ? "2px solid green"
-                              : "1px solid #ccc",
-                            padding: "6px",
-                            borderRadius: "6px",
-                            textAlign: "center",
-                            width: "100px",
-                          }}
-                        >
-                          <img
-                            src={pic || "/fallback-avatar.png"}
-                            alt="pfp"
-                            style={{
-                              width: "48px",
-                              height: "48px",
-                              borderRadius: "50%",
-                              objectFit: "cover",
-                            }}
-                          />
-                          <div style={{ fontSize: "0.75em", marginTop: "4px" }}>
-                            {name}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )} */}
               {isPrivateGame && follows.length > 0 && (
                 <div className="mb-3">
                   <h6>Invite Players:</h6>
@@ -807,133 +745,6 @@ const Lobby = ({
                   style={{ fontSize: "14px", lineHeight: "1.2" }}
                 />
               </div>
-              {/* {isPrivateGame && follows.length > 0 && (
-                <div className="mb-3">
-                  <h6>Invite Players:</h6>
-
-                  <input
-                    type="text"
-                    placeholder="Search follows..."
-                    className="form-control mb-2"
-                    value={followSearch}
-                    onChange={(e) => setFollowSearch(e.target.value)}
-                  />
-
-                  <div
-                    style={{
-                      maxHeight: "200px",
-                      overflowY: "auto",
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "10px",
-                    }}
-                  >
-                    {follows
-                      .filter((f) => {
-                        const profile = followProfiles[f] || {};
-                        const name = profile.display_name || profile.name || "";
-                        return (
-                          f !== playerId &&
-                          invitedPlayers.length < maxPlayers &&
-                          (!followSearch ||
-                            name
-                              .toLowerCase()
-                              .includes(followSearch.toLowerCase()) ||
-                            f.startsWith(followSearch))
-                        );
-                      })
-                      .slice(0, 100) // cap rendering in case you have a lot
-                      .map((f) => {
-                        const profile = followProfiles[f] || {};
-                        const name =
-                          profile.display_name ||
-                          profile.name ||
-                          f.slice(0, 12);
-                        const pic = profile.picture;
-                        const isSelected = invitedPlayers.includes(f);
-
-                        return (
-                          <div
-                            key={f}
-                            onClick={() => {
-                              setInvitedPlayers((prev) =>
-                                isSelected
-                                  ? prev.filter((id) => id !== f)
-                                  : prev.length < maxPlayers &&
-                                    !prev.includes(f)
-                                  ? [...prev, f]
-                                  : prev
-                              );
-                            }}
-                            style={{
-                              cursor: "pointer",
-                              border: isSelected
-                                ? "2px solid green"
-                                : "1px solid #ccc",
-                              padding: "6px",
-                              borderRadius: "6px",
-                              textAlign: "center",
-                              width: "100px",
-                              backgroundColor: isSelected ? "#e6ffe6" : "white",
-                            }}
-                          >
-                            <img
-                              src={pic || "/fallback-avatar.png"}
-                              alt="pfp"
-                              style={{
-                                width: "48px",
-                                height: "48px",
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                              }}
-                            />
-                            <div
-                              style={{ fontSize: "0.75em", marginTop: "4px" }}
-                            >
-                              {name}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-
-                  <div className="mt-2" style={{ fontSize: "0.9em" }}>
-                    Selected: {invitedPlayers.length} / {maxPlayers - 1}
-                  </div>
-                </div>
-              )} */}
-
-              {/* {selectedGamestate.isPrivate &&
-                Array.isArray(selectedGamestate.allowedPlayers) &&
-                selectedGamestate.allowedPlayers.length > 0 && (
-                  <div className="inviteLinks mb-3">
-                    <h5>🔗 Invite Links:</h5>
-                    <ul className="list-group">
-                      {selectedGamestate.allowedPlayers.map((id, i) => {
-                        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&gameId=${selectedGamestate.gameId}&playerId=${id}`;
-                        return (
-                          <li key={id} className="list-group-item">
-                            <strong>Player {i + 1}:</strong>
-                            <br />
-                            <code style={{ wordBreak: "break-all" }}>
-                              {inviteUrl}
-                            </code>
-                            <br />
-                            <button
-                              className="btn btn-sm btn-outline-primary mt-1"
-                              onClick={() => {
-                                navigator.clipboard.writeText(inviteUrl);
-                                alert("Copied to clipboard!");
-                              }}
-                            >
-                              Copy Link
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )} */}
 
               {lobbyGames.length > 0 ? (
                 <ul>
@@ -1001,22 +812,6 @@ const Lobby = ({
                             ))}
                           </ul>
                         )}
-
-                        {/* {game.players &&
-                        Object.keys(game.players).length > 0 ? (
-                          <ul>
-                            {Object.entries(game.players).map(
-                              ([playerId, playerData], playerIndex) => (
-                                <li key={playerIndex}>
-                                  <strong>Player {playerIndex + 1}:</strong>{" "}
-                                  {playerId}
-                                </li>
-                              )
-                            )}
-                          </ul>
-                        ) : (
-                          <div>No players connected yet</div>
-                        )} */}
                       </div>
                     </li>
                   ))}

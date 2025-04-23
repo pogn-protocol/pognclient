@@ -114,18 +114,18 @@ const RelayItem = ({
 
   return (
     <div
-      className={`relay-item flex flex-col items-center p-3 rounded cursor-pointer gap-2 w-fit transition 
-      ${
-        isSelected
-          ? "border-2 border-green-500 bg-green-100 shadow-sm"
-          : "border border-gray-300 bg-white hover:bg-gray-50"
-      }`}
+      className={`relay-item flex flex-col items-center px-3 py-2 rounded-md cursor-pointer gap-1 w-fit text-sm transition 
+    ${
+      isSelected
+        ? "border-2 border-green-500 bg-green-100 shadow-sm"
+        : "border border-gray-300 bg-white hover:bg-gray-50"
+    }`}
       onClick={() => {
         setSelectedRelayId((prev) => (prev === id ? null : id));
       }}
     >
       <div
-        className="text-2xl cursor-pointer"
+        className="text-lg"
         title="Click to disconnect"
         onClick={(e) => {
           e.stopPropagation();
@@ -144,7 +144,11 @@ const RelayItem = ({
           ? "🟠"
           : "⚪️"}
       </div>
-      <span className="text-xs ml-2">{id}</span>
+
+      <span className="text-xs text-center break-words max-w-[120px]">
+        {id}
+      </span>
+
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -155,13 +159,14 @@ const RelayItem = ({
             payload: { type: "ping", message: id },
           });
         }}
-        className={`mt-2 text-sm px-3 py-1 rounded transition-transform duration-150 ${
-          ring
-            ? "animate-bounce bg-green-500 text-white"
-            : "bg-blue-500 hover:bg-blue-600 text-white"
-        }`}
+        className={`text-xs px-2 py-1 rounded-md transition-all duration-150 mt-1
+      ${
+        ring
+          ? "animate-bounce bg-green-500 text-white"
+          : "bg-blue-500 hover:bg-blue-600 text-white"
+      }`}
       >
-        {ring ? "Pong! 🛎️" : "Ping 🛎️"}
+        {ring ? "Pong! 🛎️" : "Ping"}
       </button>
     </div>
   );

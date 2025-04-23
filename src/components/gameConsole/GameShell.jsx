@@ -3,7 +3,7 @@ import {
   useLocalGameState,
   GameResultDisplay,
   GameJsonDebug,
-} from "../utils/gameUtils";
+} from "./gameUtils";
 
 const GameShell = ({ Component, sharedProps }) => {
   const { gameState, sentMessages, receivedMessages } = sharedProps;

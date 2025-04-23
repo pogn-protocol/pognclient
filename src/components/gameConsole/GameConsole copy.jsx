@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import RockPaperScissors from "./RockPaperScissors";
-import OddsAndEvens from "./OddsAndEvens";
-import TicTacToe from "./TicTacToe";
+import RockPaperScissors from "../games/RockPaperScissors";
+import OddsAndEvens from "../games/OddsAndEvens";
+import TicTacToe from "../games/TicTacToe";
 import {
   JsonView,
   allExpanded,
@@ -9,30 +9,39 @@ import {
   defaultStyles,
 } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
-import { verifyGameMessage } from "../utils/verifications";
-import "./css/gameConsole.css"; // Assuming you have a CSS file for styles
+import { verifyGameMessage } from "../../utils/verifications";
+import "../css/gameConsole.css";
 import GameShell from "./GameShell"; // once, in
 import NoteGameResults from "./NoteGameResults"; // once, in
 
 const GameConsole = ({
   sendMessage,
-  message = {},
   playerId = "",
+  player,
   gamesToInit,
   gameConnections,
   setAddRelayConnections,
   setGamesToInit,
   gameMessages,
   setRemoveRelayConnections,
-  nostrPubkey,
-  nostrProfile,
   messages,
 }) => {
+  const nostrPubkey = player?.playerId;
+  const nostrProfile = player?.profile;
+
   const [gameStates, setGameStates] = useState(new Map());
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [gameMessagesSent, setGameMessagesSent] = useState({});
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [gameSummary, setGameSummary] = useState("");
+  const [lastGameMessage, setLastGameMessage] = useState(null);
+
+  useEffect(() => {
+    const allMessages = Object.values(gameMessages).flat();
+    if (allMessages.length > 0) {
+      setLastGameMessage(allMessages[allMessages.length - 1]);
+    }
+  }, [gameMessages]);
 
   const sendGameMessage = (gameId, payload) => {
     console.log("sendGameMessage gameId payload:", gameId, payload);
@@ -62,16 +71,16 @@ const GameConsole = ({
   };
 
   useEffect(() => {
-    if (!message || Object.keys(message).length === 0) {
+    if (!lastGameMessage || Object.keys(lastGameMessage).length === 0) {
       //console.warn("Skipping game message verification: empty message");
       return;
     }
-    console.log("GameConsole message:", message);
-    const { payload } = message;
+    console.log("GameConsole message:", lastGameMessage);
+    const { payload } = lastGameMessage;
     console.log("GameConsole payload:", payload);
     const { action, gameId } = payload;
     console.log("GameConsole action:", action, "gameId:", gameId);
-    if (!verifyGameMessage(message, playerId, gameId)) {
+    if (!verifyGameMessage(lastGameMessage, playerId, gameId)) {
       return;
     }
 
@@ -93,7 +102,7 @@ const GameConsole = ({
       default:
         console.warn(`Unhandled action: ${action}`);
     }
-  }, [message]);
+  }, [lastGameMessage]);
 
   useEffect(() => {
     if (gamesToInit.size > 0) {

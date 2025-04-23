@@ -5,11 +5,10 @@ import {
   Description,
 } from "@headlessui/react";
 import { useEffect } from "react";
-import pognLogo from "../assets/pogn.png";
+import pognLogo from "../../assets/pogn.png";
 
 const NoteGameResults = ({
   isOpen,
-  setIsOpen,
   playerId,
   nostrProfile = {},
   gameSummary = "",
@@ -59,11 +58,7 @@ const NoteGameResults = ({
   }, [message]);
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={() => setIsOpen(false)}
-      className="relative z-50"
-    >
+    <Dialog open={isOpen} onClose={() => onClose()} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
 
       <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -104,7 +99,7 @@ const NoteGameResults = ({
 
           <div className="flex justify-end gap-2 m-4">
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={() => onClose()}
               className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 font-semibold"
             >
               Cancel

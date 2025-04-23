@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
-import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
-import "./css/player.css";
+import { useNostrExtensionKey } from "../hooks/useNostrExtensionKey";
+import "./../css/player.css";
 
 const defaultKeys = [
   "be7c4cf8b9db6950491f2de3ece4668a1beb93972082d021256146a2b4ae1348",

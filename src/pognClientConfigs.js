@@ -1,18 +1,19 @@
-// src/pognClientConfigs.js
-
-const ENV = import.meta.env.MODE;
-//const ENV = "development"; // Change this to "development" for local testing
-//const ENV = "production"; // Change this to "production" for production testing
-
 const configs = {
   development: {
-    LOBBY_WS_URL: "ws://localhost:8080", // your local lobby relay
-    GAME_WS_URL: "ws://localhost:8080", // your local game relay
+    BOOTSTRAP_CONNECTIONS: [
+      { id: "lobby1", url: "ws://localhost:8080", type: "lobby" },
+    ],
   },
   production: {
-    LOBBY_WS_URL: "wss://pogn-a5fe730540b4.herokuapp.com/", // prod relay address
-    GAME_WS_URL: "wss://pogn-a5fe730540b4.herokuapp.com/", // prod game address
+    BOOTSTRAP_CONNECTIONS: [
+      {
+        id: "lobby1",
+        url: "wss://pogn-a5fe730540b4.herokuapp.com/",
+        type: "lobby",
+      },
+    ],
   },
 };
 
-export default configs[ENV];
+const env = import.meta.env.MODE || "development";
+export default configs[env];

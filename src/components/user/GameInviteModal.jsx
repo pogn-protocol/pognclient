@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
+import { useNostrExtensionKey } from "../hooks/useNostrExtensionKey";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { JsonView } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
@@ -13,12 +13,10 @@ const GameInviteModal = ({
   lastGameInviteMessage,
   connections,
   setShowInviteModal,
-  setAllKeys,
-  allKeys,
+  setPlayers,
   activePlayerId,
 }) => {
   const { nostrDetected, nostrPubkey, loginNostr } = useNostrExtensionKey();
-
   const [pendingJoin, setPendingJoin] = useState(false);
   const [nostrLogin, setNostrLogin] = useState(false);
   const [pubkey, setPubkey] = useState(nostrPubkey); // Store the public key in state
@@ -120,9 +118,19 @@ const GameInviteModal = ({
     if (nostrPubkey === urlParams.playerId) {
       console.log("✅ Authenticated with Nostr extension:", nostrPubkey);
       setActivePlayerId(nostrPubkey);
-      setAllKeys((prev) =>
-        prev.includes(nostrPubkey) ? prev : [...prev, nostrPubkey]
-      );
+      setPlayers((prev) => {
+        const alreadyExists = prev.some((p) => p.id === nostrPubkey);
+        if (alreadyExists) return prev;
+
+        return [
+          ...prev,
+          {
+            id: nostrPubkey,
+            pubkeySource: "nostr",
+          },
+        ];
+      });
+
       let lobbyId = urlParams.lobbyId || "lobby1";
 
       sendMessage(lobbyId, {
@@ -148,14 +156,12 @@ const GameInviteModal = ({
     setNostrLogin(false);
     setActivePlayerId(null);
 
-    setAllKeys((prev) => {
-      const newKeys = prev.filter((key) => key !== urlParams.playerId);
-      console.log(
-        "➖ Removed activePlayerId from allKeys:",
-        urlParams.playerId
-      );
-      return newKeys;
+    setPlayers((prev) => {
+      const newList = prev.filter((p) => p.id !== urlParams.playerId);
+      console.log("➖ Removed active player:", urlParams.playerId);
+      return newList;
     });
+
     onClose();
   };
 

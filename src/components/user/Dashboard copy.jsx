@@ -2,7 +2,7 @@ import React from "react";
 import { createAvatar } from "@dicebear/avatars";
 import * as identiconSprites from "@dicebear/avatars-identicon-sprites";
 //import "./css/dashboard.css";
-import { useNostrExtensionKey } from "./hooks/useNostrExtensionKey";
+import { useNostrExtensionKey } from "../hooks/useNostrExtensionKey";
 
 const Dashboard = ({
   playerName,
