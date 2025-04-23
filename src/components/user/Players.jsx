@@ -177,7 +177,7 @@ const Players = ({
   };
 
   return (
-    <div className="w-full my-6 space-y-4 text-sm text-gray-700">
+    <div className="w-full my-2 space-y-4 text-sm text-gray-700">
       {showInviteModal && (
         <GameInviteModal
           isOpen={isInviteOpen}
