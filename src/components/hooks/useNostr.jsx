@@ -13,7 +13,7 @@ const relays = [
 const pool = new SimplePool();
 
 const useNostr = () => {
-  const [irisPubkey] = useLocalState("user/publicKey", "");
+  const [irisPubkey] = useLocalState("nostr/extensionKey", "");
   const [profile, setProfile] = useState(null);
   const [manualFollows, setManualFollows] = useState([]);
   const [followProfiles, setFollowProfiles] = useState({});
@@ -34,7 +34,12 @@ const useNostr = () => {
 
   // 👤 Load own profile (kind 0)
   useEffect(() => {
-    if (!irisPubkey) return;
+    if (!irisPubkey) {
+      setProfile(null); // 🧼 clear nostrProfile on logout
+      setManualFollows([]); // 🧼 clear follows too
+      setFollowProfiles({});
+      return;
+    }
     const sub = pool.subscribe(
       relays,
       {

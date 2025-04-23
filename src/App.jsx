@@ -117,6 +117,7 @@ const App = () => {
             gameInviteMessages={gameInviteMessages}
             activePlayerId={activePlayerId}
             setNostrProfileData={setNostrProfileData}
+            nostrProfileData={nostrProfileData}
           />
           <RelayManager
             addRelayConnections={addRelayConnections}

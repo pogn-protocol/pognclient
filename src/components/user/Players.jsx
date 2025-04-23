@@ -52,42 +52,45 @@ const Players = ({
   }, [nostrDetected, nostrPubkey]);
 
   useEffect(() => {
+    const isActiveNostrPlayer =
+      activePlayerId && nostrPubkey && activePlayerId === nostrPubkey;
+    const hasProfile = nostrProfile && Object.keys(nostrProfile).length > 0;
+    const hasFollows = Array.isArray(follows) && follows.length > 0;
+    const hasFollowProfiles =
+      followProfiles && Object.keys(followProfiles).length > 0;
+
+    console.log("🔍 [useEffect] CHECKING NOSTR PROFILE ASSIGNMENT...");
+    console.log("👉 activePlayerId:", activePlayerId);
+    console.log("👉 nostrPubkey:", nostrPubkey);
     console.log(
-      "activePlayerId",
-      activePlayerId,
-      "nostrPubkey",
-      nostrPubkey,
-      "nostrProfile",
-      nostrProfile,
-      "follows",
-      follows,
-      "followProfiles",
-      followProfiles
+      "🧪 MATCH (activePlayerId === nostrPubkey):",
+      activePlayerId === nostrPubkey
     );
-    if (
-      !activePlayerId ||
-      !nostrPubkey ||
-      activePlayerId !== nostrPubkey ||
-      !nostrProfile ||
-      !follows ||
-      !followProfiles
-    ) {
+    console.log("🧾 nostrProfile:", nostrProfile);
+    console.log("👥 follows:", follows);
+    console.log("📇 followProfiles:", followProfiles);
+
+    if (!isActiveNostrPlayer || !hasProfile) {
+      console.warn("❌ Conditions not met — clearing nostrProfileData.");
       setNostrProfileData?.(null);
       return;
     }
 
-    console.log("Setting Nostr profile data");
-
-    setNostrProfileData({
+    const profilePayload = {
       id: nostrPubkey,
       ...nostrProfile,
-      follows,
-      followProfiles,
-    });
+      follows: hasFollows ? follows : [],
+      followProfiles: hasFollowProfiles ? followProfiles : {},
+    };
+
+    console.log("✅ ALL CONDITIONS MET — SETTING nostrProfileData:");
+    console.log(profilePayload);
+
+    setNostrProfileData(profilePayload);
   }, [
     activePlayerId,
     nostrPubkey,
-    nostrProfile?.display_name, // trigger only when full profile arrives
+    nostrProfile?.display_name,
     follows?.length,
     Object.keys(followProfiles || {}).length,
   ]);
@@ -255,7 +258,9 @@ const Players = ({
         {activePlayerId && (
           <Dashboard
             activePlayerId={activePlayerId}
-            activeProfile={nostrProfileData}
+            activeProfile={
+              activePlayerId === nostrPubkey ? nostrProfileData : undefined
+            }
           />
         )}
       </div>
