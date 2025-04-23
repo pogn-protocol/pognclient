@@ -7,9 +7,9 @@ const ConnectionsUI = ({
   selectedConnectionId,
   setSelectedConnectionId,
   sendMessage,
-  messages,
   playerId,
 }) => {
+  console.log("ConnectionsUI");
   const [createId, setCreateId] = useState("lobby3");
   const [connectId, setConnectId] = useState("lobby2");
   const [connectionType, setConnectionType] = useState("lobby");

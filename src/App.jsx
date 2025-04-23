@@ -157,7 +157,9 @@ const App = () => {
             setAddRelayConnections={setAddRelayConnections}
           />
 
-          {activePlayerId ? (
+          {activePlayerId &&
+          selectedLobbyId &&
+          connections.get(selectedLobbyId)?.readyState === 1 ? (
             <GameConsole
               playerId={activePlayerId}
               nostrProfile={nostrProfileData}
@@ -180,7 +182,7 @@ const App = () => {
             />
           ) : (
             <p className="text-center text-gray-500 italic">
-              Game not started...
+              Game not started or lobby not connected...
             </p>
           )}
 

@@ -51,10 +51,11 @@ const Lobbies = ({
           return (
             <div className="w-full">
               <Lobby
+                key={selectedLobbyId}
                 lobbyId={selectedLobbyId}
                 playerId={playerId}
                 sendMessage={(msg) => handleSendMessage(selectedLobbyId, msg)}
-                message={lobbyMessages[selectedLobbyId]?.slice(-1)[0] || {}}
+                message={lobbyMessages[selectedLobbyId]?.slice(-1)[0] ?? null}
                 connectionUrl={conn?.url || ""}
                 lobbyConnections={connections}
                 setGamesToInit={setGamesToInit}

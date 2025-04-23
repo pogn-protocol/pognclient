@@ -87,10 +87,12 @@ const Lobby = ({
   }, [playerId]);
 
   useEffect(() => {
+    if (!message || Object.keys(message).length === 0) return;
+    if (!playerId) return;
+    if (!verifyLobbyMessage(message, playerId, lobbyId)) return;
     console.log("Lobby Message Received by Lobby:", message);
     setLobbyMessagesReceived((prev) => [...prev, message]);
 
-    if (!verifyLobbyMessage(message, playerId, lobbyId)) return;
     const { payload } = message;
     const { action } = payload;
 
