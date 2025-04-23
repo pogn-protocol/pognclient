@@ -40,12 +40,8 @@ const App = () => {
   const [addRelayConnections, setAddRelayConnections] = useState([]);
   const [removeRelayConnections, setRemoveRelayConnections] = useState([]);
   const [selectedLobbyId, setSelectedLobbyId] = useState(null);
-  const [createLobbyId, setCreateLobbyId] = useState("lobby3");
   const [selectedConnectionId, setSelectedConnectionId] = useState("");
   const [selectedRelayId, setSelectedRelayId] = useState(null);
-  const [lobbyConnectUrl, setLobbyConnectUrl] = useState(
-    pognClientConfigs.LOBBY_WS_URL
-  );
   const [connections, setConnections] = useState(new Map());
   const [nostrProfileData, setNostrProfileData] = useState(null);
 
@@ -139,15 +135,13 @@ const App = () => {
           />
 
           <ConnectionsUI
-            connectionType="lobby"
             connections={connections}
             setAddRelayConnections={setAddRelayConnections}
             selectedConnectionId={selectedConnectionId}
             setSelectedConnectionId={setSelectedConnectionId}
-            createId={createLobbyId}
-            setCreateId={setCreateLobbyId}
-            connectUrl={lobbyConnectUrl}
-            setConnectUrl={setLobbyConnectUrl}
+            sendMessage={(id, msg) => handleSendMessage(id, msg)}
+            messages={messages}
+            playerId={activePlayerId}
           />
 
           <Lobbies
@@ -167,7 +161,6 @@ const App = () => {
             <GameConsole
               playerId={activePlayerId}
               nostrProfile={nostrProfileData}
-              message={Object.values(messages).flat().slice(-1)[0] || {}}
               sendMessage={(id, msg) => handleSendMessage(id, msg)}
               sendLobbyMessage={(id, msg) => handleSendMessage(id, msg)}
               gamesToInit={gamesToInit}

@@ -3,7 +3,7 @@ import "react-json-view-lite/dist/index.css";
 
 const MessagesUI = ({ title = "Messages", messageGroups = [] }) => {
   return (
-    <div className="mt-4 w-full">
+    <div className="w-full">
       <h3 className="font-semibold mb-2">{title}</h3>
 
       <div className="flex flex-wrap gap-4 justify-between w-full">

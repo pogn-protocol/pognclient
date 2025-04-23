@@ -1,16 +1,27 @@
+import { useState } from "react";
+import pognClientConfigs from "../../pognClientConfigs";
+
 const ConnectionsUI = ({
-  connectionType = "lobby", // or "game"
   connections,
   setAddRelayConnections,
   selectedConnectionId,
   setSelectedConnectionId,
-  createId,
-  setCreateId,
-  connectUrl,
-  setConnectUrl,
+  sendMessage,
+  messages,
+  playerId,
 }) => {
+  const [createId, setCreateId] = useState("lobby3");
+  const [connectId, setConnectId] = useState("lobby2");
+  const [connectionType, setConnectionType] = useState("lobby");
+  const [connectUrl, setConnectUrl] = useState(() => {
+    const defaultLobby = pognClientConfigs.BOOTSTRAP_CONNECTIONS.find(
+      (conn) => conn.type === "lobby"
+    );
+    return defaultLobby?.url || "";
+  });
+
   const filteredConnections = Array.from(connections.entries()).filter(
-    ([_, conn]) => conn.type === connectionType && conn.readyState === 1
+    ([_, conn]) => conn.readyState === 1
   );
 
   return (
@@ -57,6 +68,28 @@ const ConnectionsUI = ({
                       type: connectionType,
                     },
                   ]);
+
+                  // 🔥 Find an existing lobby connection to send the message from
+                  const firstLobbyConn = Array.from(connections.entries()).find(
+                    ([_, c]) => c.type === "lobby" && c.readyState === 1
+                  );
+
+                  if (firstLobbyConn) {
+                    const [relayId] = firstLobbyConn;
+
+                    sendMessage(relayId, {
+                      payload: {
+                        type: "lobby",
+                        action: "createLobby",
+                        lobbyId: createId,
+                        playerId: playerId,
+                      },
+                    });
+                  } else {
+                    console.warn(
+                      "⚠️ No connected lobby relay to send createLobby message from."
+                    );
+                  }
                 }
               }}
             >
@@ -83,20 +116,20 @@ const ConnectionsUI = ({
               type="text"
               className="w-48 px-2 py-1 border rounded text-sm"
               placeholder={`${connectionType} ID`}
-              value={createId}
-              onChange={(e) => setCreateId(e.target.value)}
+              value={connectId}
+              onChange={(e) => setConnectId(e.target.value)}
             />
 
             <button
               className="px-3 py-1 text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-600 hover:text-white transition"
               onClick={() => {
-                if (!connectUrl || !createId) return;
+                if (!connectUrl || !connectId) return;
                 setAddRelayConnections((prev) => [
                   ...prev,
-                  { id: createId, url: connectUrl, type: connectionType },
+                  { id: connectId, url: connectUrl, type: connectionType },
                 ]);
-                setConnectUrl("");
-                setCreateId("");
+                //setConnectUrl("");
+                //setConnectId("");
               }}
             >
               Connect

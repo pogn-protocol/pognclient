@@ -357,7 +357,7 @@ const Lobby = ({
             Login to Lobby
           </button>
         ) : (
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2">
             <div
               className="w-5 h-5 rounded-full border border-gray-700"
               style={{ backgroundColor: connectionColor }}
@@ -369,21 +369,23 @@ const Lobby = ({
 
         {isSignedIn && (
           <>
-            {LobbyMessagesUI && (
-              <LobbyMessagesUI
-                title={`Lobby ${lobbyId} Messages`}
-                messageGroups={[
-                  {
-                    title: "Received",
-                    msgs: lobbyMessagesReceived,
-                  },
-                  {
-                    title: "Sent",
-                    msgs: lobbyMessagesSent,
-                  },
-                ]}
-              />
-            )}
+            <div className="flex flex-row flex-wrap max-w-full px-6">
+              {LobbyMessagesUI && (
+                <LobbyMessagesUI
+                  title={`Lobby ${lobbyId} Messages`}
+                  messageGroups={[
+                    {
+                      title: "Received",
+                      msgs: lobbyMessagesReceived,
+                    },
+                    {
+                      title: "Sent",
+                      msgs: lobbyMessagesSent,
+                    },
+                  ]}
+                />
+              )}
+            </div>
 
             <div className="mt-4">
               <h5 className="text-sm font-semibold text-gray-800 mb-2">
