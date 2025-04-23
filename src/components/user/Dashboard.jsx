@@ -24,7 +24,7 @@ const Dashboard = ({ activePlayerId, activeProfile }) => {
     <div className="border rounded-xl p-3 shadow-md w-full">
       <h5 className="text-lg font-semibold mb-2">Player Dashboard</h5>
 
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center gap-4 mb-2">
         <div className="w-[5vw] h-[5vw] min-w-[56px] min-h-[56px] rounded-full overflow-hidden border-2 border-blue-500">
           <img src={profilePic} alt="Avatar" className="w-full h-full" />
         </div>
