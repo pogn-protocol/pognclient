@@ -47,6 +47,7 @@ const GameConsole = ({
         action: "gameAction",
         ...payload,
         gameId,
+        playerId,
       },
     };
 

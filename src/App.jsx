@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import GameConsole from "./components/gameConsole/GameConsole";
 import useMessages from "./components/hooks/useMessages";
@@ -30,11 +30,30 @@ window.addEventListener("unhandledrejection", function (event) {
   console.error("🚨 Unhandled Promise Rejection:", event.reason);
 });
 
+const getStoredPlayerId = () => {
+  try {
+    return localStorage.getItem("pogn-playerId") || null;
+  } catch {
+    return null;
+  }
+};
+
 const App = () => {
-  const [activePlayerId, setActivePlayerId] = useLocalState(
-    "user/publicKey",
-    null
-  );
+  const [activePlayerId, setActivePlayerId] = useState(getStoredPlayerId());
+
+  useEffect(() => {
+    try {
+      if (activePlayerId) {
+        localStorage.setItem("pogn-playerId", activePlayerId);
+      } else {
+        localStorage.removeItem("pogn-playerId");
+      }
+    } catch {}
+  }, [activePlayerId]);
+  // const [activePlayerId, setActivePlayerId] = useLocalState(
+  //   "user/publicKey",
+  //   null
+  // );
   const [gamesToInit, setGamesToInit] = useState(new Map());
   const [sendMessageToUrl, setSendMessageToUrl] = useState(() => () => {});
   const [addRelayConnections, setAddRelayConnections] = useState([]);
