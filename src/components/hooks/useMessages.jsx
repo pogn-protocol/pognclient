@@ -60,11 +60,15 @@ export default function useMessages(
         [id]: [...(prev[id] || []), message],
       }));
 
-      const { type, lobbyId, gameId, action, lobbyAddress } = message.payload;
+      const { type, lobbyId, gameId, action, lobbyAddress, errorMessage } =
+        message.payload;
       if (type === "error") {
+        console.log("Error message received:", errorMessage);
+        console.log("Message payload:", message.payload);
+        console.log("Message:", message);
         // console.warn(`⚠️ Error message received from ${id}:`, message.payload);
-        let errorMessage = message.payload.message;
-        console.error(`⚠️ Error message received from ${id}:`, errorMessage);
+        let msg = message.payload.errorMessage;
+        console.error(`⚠️ Error message received from ${id}:`, msg);
         alert(`⚠️ Error message received from ${id}: ${errorMessage}`);
 
         return;
