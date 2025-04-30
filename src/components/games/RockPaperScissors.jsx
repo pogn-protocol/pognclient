@@ -131,6 +131,14 @@ const RockPaperScissors = ({
                   : "bg-red-100 text-red-800"
               }`}
             >
+              {console.log("gameState", gameState)}
+              {console.log("playerId", playerId)}
+              {console.log("winner", winner)}
+              {console.log(winner === playerId)}
+              {/* {console.log(
+                winner.toString().trim() === playerId.toString().trim()
+              )} */}
+
               {winner === playerId
                 ? "🏆 You Won!"
                 : winner === "draw"

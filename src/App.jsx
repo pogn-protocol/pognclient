@@ -180,7 +180,7 @@ const App = () => {
           selectedLobbyId &&
           connections.get(selectedLobbyId)?.readyState === 1 ? (
             <GameConsole
-              playerId={activePlayerId}
+              activePlayerId={activePlayerId}
               nostrProfile={nostrProfileData}
               sendMessage={(id, msg) => handleSendMessage(id, msg)}
               sendLobbyMessage={(id, msg) => handleSendMessage(id, msg)}
