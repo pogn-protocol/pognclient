@@ -62,7 +62,7 @@ export default function useMessages(
 
       const { type, lobbyId, gameId, action, lobbyAddress, errorMessage } =
         message.payload;
-      if (type === "error") {
+      if (errorMessage) {
         console.log("Error message received:", errorMessage);
         console.log("Message payload:", message.payload);
         console.log("Message:", message);

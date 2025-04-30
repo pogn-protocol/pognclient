@@ -80,9 +80,23 @@ const RelayItem = ({
   }, [readyState, updateConnection]);
 
   useEffect(() => {
-    if (lastJsonMessage && lastJsonMessage !== prevMessage) {
-      onMessage(id, lastJsonMessage);
+    if (lastJsonMessage && lastJsonMessage?.uuid !== prevMessage?.uuid) {
+      console.log("Received message from relay:", id, lastJsonMessage);
+      console.log("Previous message:", prevMessage);
+      //if .relayId doesn't == id, then return;
+      if (lastJsonMessage.relayId !== id) {
+        console.warn(
+          `⚠️ Message from relay ${id} does not match the current relayId. Ignoring.`
+        );
+        return;
+      }
+      if (lastJsonMessage && !lastJsonMessage.uuid) {
+        console.warn("⚠️ Message from relay does not have a uuid. Adding one.");
+        lastJsonMessage.uuid = uuid();
+      }
       setPrevMessage(lastJsonMessage);
+
+      onMessage(id, lastJsonMessage);
 
       if (
         lastJsonMessage &&
