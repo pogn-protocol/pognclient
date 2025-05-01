@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import generateAnimalName from "../../utils/animalNames.js";
 import { verifyLobbyMessage } from "../../utils/verifications.js";
-
+import gameComponents from "../games/gamesIndex.jsx";
 const Lobby = ({
   sendMessage,
   message,
@@ -43,16 +43,25 @@ const Lobby = ({
   const [invitedPlayers, setInvitedPlayers] = useState([]); // Array to hold invited players
   const [invitedError, setInvitedError] = useState("");
   const [followSearch, setFollowSearch] = useState("");
+  const [gameConfigs, setGameConfigs] = useState({});
 
   const isSignedIn = !!(signedInLobbies && signedInLobbies.has(lobbyId));
-  console.log("Lobby isSignedIn", isSignedIn);
-  const GAME_CONFIGS = {
-    "rock-paper-scissors": { maxPlayers: 2 },
-    "odds-and-evens": { maxPlayers: 2 },
-    "tic-tac-toe": { maxPlayers: 2 },
+  const gameTitles = Object.keys(gameComponents);
 
-    // add more games here
-  };
+  console.log("Lobby isSignedIn", isSignedIn);
+  useEffect(() => {
+    if (isSignedIn && gameTitles.length > 0) {
+      sendMessage({
+        payload: {
+          type: "lobby",
+          lobbyId,
+          action: "gameConfigs",
+          playerId,
+          gameTypes: gameTitles, // ← send all game types at once
+        },
+      });
+    }
+  }, [isSignedIn]);
 
   const sendLobbyMessage = (message) => {
     setLobbyMessagesSent((prev) => [...prev, message]); // track sent messages
@@ -110,6 +119,10 @@ const Lobby = ({
     );
 
     switch (action) {
+      case "gameConfigs":
+        console.log("📦 Received game configs:", payload.gameConfigs);
+        setGameConfigs(payload.gameConfigs || {});
+        break;
       case "refreshLobby":
         console.log("Game list received:", payload);
         const isPlayerNowInLobby =
@@ -336,7 +349,8 @@ const Lobby = ({
 
   useEffect(() => {
     if (isPrivateGame && selectedGameType) {
-      const config = GAME_CONFIGS[selectedGameType];
+      //const config = GAME_CONFIGS[selectedGameType];
+      const config = gameConfigs[selectedGameType];
       if (config) {
         setMaxPlayers(config.maxPlayers);
 
@@ -438,7 +452,14 @@ const Lobby = ({
                 value={selectedGameType}
                 onChange={(e) => setSelectedGameType(e.target.value)}
               >
-                {Object.entries(GAME_CONFIGS).map(([key]) => (
+                {/* {Object.entries(GAME_CONFIGS).map(([key]) => (
+                  <option key={key} value={key}>
+                    {key
+                      .replace(/-/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
+                  </option>
+                ))} */}
+                {Object.entries(gameConfigs).map(([key]) => (
                   <option key={key} value={key}>
                     {key
                       .replace(/-/g, " ")
