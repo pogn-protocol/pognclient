@@ -30,29 +30,8 @@ window.addEventListener("unhandledrejection", function (event) {
   console.error("🚨 Unhandled Promise Rejection:", event.reason);
 });
 
-const getStoredPlayerId = () => {
-  try {
-    return localStorage.getItem("pogn-playerId") || null;
-  } catch {
-    return null;
-  }
-};
-
 const App = () => {
-  const [activePlayerId, setActivePlayerId] = useState(getStoredPlayerId());
-
-  useEffect(() => {
-    try {
-      if (activePlayerId) {
-        localStorage.setItem("pogn-playerId", activePlayerId);
-      } else {
-        localStorage.removeItem("pogn-playerId");
-      }
-    } catch {}
-  }, [activePlayerId]);
-  // const [activePlayerId, setActivePlayerId] = useLocalState(
-  //   "user/publicKey",
-  //   null
+  const [activePlayerId, setActivePlayerId] = useState(null);
   // );
   const [gamesToInit, setGamesToInit] = useState(new Map());
   const [sendMessageToUrl, setSendMessageToUrl] = useState(() => () => {});
