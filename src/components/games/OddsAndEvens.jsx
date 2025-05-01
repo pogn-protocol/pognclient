@@ -72,7 +72,9 @@ function OddsAndEvens({ sendGameMessage, gameState, playerId, gameId }) {
       gameAction: "chooseNumber",
       playerId,
       gameId,
-      number,
+      gameActionParams: {
+        number,
+      },
     });
   };
 

@@ -56,7 +56,9 @@ const TicTacToe = ({ sendGameMessage, playerId, gameState, gameId }) => {
       gameAction: "makeMove",
       playerId,
       gameId,
-      index,
+      gameActionParams: {
+        index,
+      },
     });
   };
 

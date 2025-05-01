@@ -49,6 +49,8 @@ const Lobby = ({
   const GAME_CONFIGS = {
     "rock-paper-scissors": { maxPlayers: 2 },
     "odds-and-evens": { maxPlayers: 2 },
+    "tic-tac-toe": { maxPlayers: 2 },
+
     // add more games here
   };
 
@@ -128,20 +130,24 @@ const Lobby = ({
         const playerGames = payload.lobbyGames.filter((game) =>
           game.players?.includes(playerId)
         );
-
         console.log("playerGames", playerGames);
-
-        if (playerGames.length > 0) {
-          console.log("Player is in a valid game:", playerGames);
-          console.log(playerGames);
+        let startedPlayerGames = playerGames.filter(
+          (game) => game.lobbyStatus === "started"
+        );
+        if (startedPlayerGames.length > 0) {
+          console.log("Player is in a valid game:", startedPlayerGames);
+          console.log(startedPlayerGames);
           console.log(
+            startedPlayerGames,
             "Setting games to init:",
-            playerGames,
+            startedPlayerGames,
             "For lobbyId:",
             lobbyId
           );
 
-          const gamesMissingRelay = playerGames.filter((game) => !game.relayId);
+          const gamesMissingRelay = startedPlayerGames.filter(
+            (game) => !game.relayId
+          );
           if (gamesMissingRelay.length > 0) {
             console.error(
               "⚠️ Some games are missing relayId:",
@@ -151,20 +157,20 @@ const Lobby = ({
 
           setGamesToInit((prev) => {
             const updatedMap = new Map(prev);
-            updatedMap.set(lobbyId, playerGames);
+            updatedMap.set(lobbyId, startedPlayerGames);
             return updatedMap;
           });
           setIsJoining(false);
 
-          const gameId = playerGames[0].gameId; // Get the first gameId from the filtered games
+          const gameId = startedPlayerGames[0].gameId; // Get the first gameId from the filtered games
           setSelectedGameId(gameId); // Highlight the selected game
           setSelectedGamestate((prevState) => ({
             ...prevState,
-            ...playerGames[0],
+            ...startedPlayerGames[0],
           }));
           const isPlayerInGame =
-            Array.isArray(playerGames[0].players) &&
-            playerGames[0].players.includes(String(playerId));
+            Array.isArray(startedPlayerGames[0].players) &&
+            startedPlayerGames[0].players.includes(String(playerId));
           setHasJoined(isPlayerInGame); // ✅ this was missing
         } else {
           console.log("Player is not in any valid game. Staying in the lobby.");
@@ -343,6 +349,20 @@ const Lobby = ({
       }
     }
   }, [selectedGameType, isPrivateGame, playerId]);
+
+  const handleStartGame = () => {
+    console.log("Starting game:", selectedGamestate.gameId);
+
+    sendLobbyMessage({
+      payload: {
+        type: "lobby",
+        lobbyId,
+        action: "startGame",
+        gameId: selectedGamestate.gameId,
+        playerId,
+      },
+    });
+  };
 
   return (
     <div className="lobby">
@@ -576,9 +596,9 @@ const Lobby = ({
                   onClick={handleListGames}
                   className="px-4 py-2 rounded bg-green-600 hover:bg-blue-700 text-white font-semibold text-sm"
                 >
-                  Refresh Games
+                  Refresh Lobby
                 </button>
-                <button
+                {/* <button
                   onClick={handleJoinGame}
                   disabled={
                     hasJoined ||
@@ -604,7 +624,43 @@ const Lobby = ({
                     : isJoining
                     ? "Joining..."
                     : "Join Game"}
-                </button>
+                </button> */}
+                {!hasJoined && (
+                  <button
+                    onClick={handleJoinGame}
+                    disabled={
+                      isJoining ||
+                      lobbyPlayers.length === 0 ||
+                      !selectedGamestate.gameId ||
+                      selectedGamestate.players.length >=
+                        selectedGamestate.instance.maxPlayers
+                    }
+                    className={`px-4 py-2 rounded font-semibold text-white text-sm ${
+                      isJoining ||
+                      lobbyPlayers.length === 0 ||
+                      !selectedGamestate.gameId ||
+                      selectedGamestate.players.length >=
+                        selectedGamestate.instance.maxPlayers
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
+                  >
+                    {isJoining ? "Joining..." : "Join Game"}
+                  </button>
+                )}
+
+                {hasJoined &&
+                  selectedGamestate.players?.length >=
+                    selectedGamestate.instance?.minPlayers &&
+                  selectedGamestate.lobbyStatus !== "started" &&
+                  selectedGamestate.gameStatus !== "started" && (
+                    <button
+                      onClick={handleStartGame}
+                      className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
+                    >
+                      🚀 Start Game
+                    </button>
+                  )}
               </div>
             </div>
 
@@ -634,11 +690,25 @@ const Lobby = ({
                             {game.gameType}
                           </span>
                         </div>
-                        {game.players?.includes(playerId) && (
-                          <span className="text-green-700 text-xs font-bold">
-                            ✅ Joined
-                          </span>
-                        )}
+                        <div className="text-xs mt-2 bg-gray-100 p-2 rounded overflow-auto max-h-64">
+                          {JSON.stringify(
+                            { ...game, instance: undefined },
+                            null,
+                            2
+                          )}
+                        </div>
+                        <div className="flex  flex-col items-end">
+                          {game.players?.includes(playerId) && (
+                            <span className="text-green-700 text-xs font-bold">
+                              Joined
+                            </span>
+                          )}
+                          {game.lobbyStatus == "started" && (
+                            <span className="text-blue-700 text-xs font-bold">
+                              Started
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-gray-600 mt-1">
                         Players: {game.players.length} /{" "}
