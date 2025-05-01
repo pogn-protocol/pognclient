@@ -44,6 +44,7 @@ const Lobby = ({
   const [invitedError, setInvitedError] = useState("");
   const [followSearch, setFollowSearch] = useState("");
   const [gameConfigs, setGameConfigs] = useState({});
+  const [preSelectedGame, setPreSelectedGame] = useState(null);
 
   const isSignedIn = !!(signedInLobbies && signedInLobbies.has(lobbyId));
   const gameTitles = Object.keys(gameComponents);
@@ -147,49 +148,81 @@ const Lobby = ({
         let startedPlayerGames = playerGames.filter(
           (game) => game.lobbyStatus === "started"
         );
-        if (startedPlayerGames.length > 0) {
-          console.log("Player is in a valid game:", startedPlayerGames);
-          console.log(startedPlayerGames);
-          console.log(
-            startedPlayerGames,
-            "Setting games to init:",
-            startedPlayerGames,
-            "For lobbyId:",
-            lobbyId
+
+        setGamesToInit((prev) => {
+          const updatedMap = new Map(prev);
+          updatedMap.set(lobbyId, startedPlayerGames);
+          return updatedMap;
+        });
+
+        let targetGameId = preSelectedGame || selectedGameId;
+        let targetGame = payload.lobbyGames.find(
+          (g) => g.gameId === targetGameId
+        );
+
+        if (targetGame) {
+          setSelectedGameId(targetGame.gameId);
+          setSelectedGamestate((prev) => ({ ...prev, ...targetGame }));
+          setHasJoined(
+            Array.isArray(targetGame.players) &&
+              targetGame.players.includes(String(playerId))
           );
-
-          const gamesMissingRelay = startedPlayerGames.filter(
-            (game) => !game.relayId
-          );
-          if (gamesMissingRelay.length > 0) {
-            console.error(
-              "⚠️ Some games are missing relayId:",
-              gamesMissingRelay
-            );
-          }
-
-          setGamesToInit((prev) => {
-            const updatedMap = new Map(prev);
-            updatedMap.set(lobbyId, startedPlayerGames);
-            return updatedMap;
-          });
-          setIsJoining(false);
-
-          const gameId = startedPlayerGames[0].gameId; // Get the first gameId from the filtered games
-          setSelectedGameId(gameId); // Highlight the selected game
-          setSelectedGamestate((prevState) => ({
-            ...prevState,
-            ...startedPlayerGames[0],
-          }));
-          const isPlayerInGame =
-            Array.isArray(startedPlayerGames[0].players) &&
-            startedPlayerGames[0].players.includes(String(playerId));
-          setHasJoined(isPlayerInGame); // ✅ this was missing
+          //setPreSelectedGame(null);
         } else {
-          console.log("Player is not in any valid game. Staying in the lobby.");
           setSelectedGameId(null);
+          setSelectedGamestate({});
           setHasJoined(false);
         }
+        setPreSelectedGame(null);
+
+        // if (startedPlayerGames.length > 0) {
+        //   console.log("Player is in a valid game:", startedPlayerGames);
+        //   console.log(startedPlayerGames);
+        //   console.log(
+        //     startedPlayerGames,
+        //     "Setting games to init:",
+        //     startedPlayerGames,
+        //     "For lobbyId:",
+        //     lobbyId
+        //   );
+
+        //   const gamesMissingRelay = startedPlayerGames.filter(
+        //     (game) => !game.relayId
+        //   );
+        //   if (gamesMissingRelay.length > 0) {
+        //     console.error(
+        //       "⚠️ Some games are missing relayId:",
+        //       gamesMissingRelay
+        //     );
+        //   }
+
+        //   setGamesToInit((prev) => {
+        //     const updatedMap = new Map(prev);
+        //     updatedMap.set(lobbyId, startedPlayerGames);
+        //     return updatedMap;
+        //   });
+        //   setIsJoining(false);
+
+        //   const currentStillValid = startedPlayerGames.find(
+        //     (g) => g.gameId === selectedGameId
+        //   );
+
+        //   // const gameId = startedPlayerGames[0].gameId; // Get the first gameId from the filtered games
+        //   // setSelectedGameId(gameId); // Highlight the selected game
+        //   // setSelectedGamestate((prevState) => ({
+        //   //   ...prevState,
+        //   //   ...startedPlayerGames[0],
+        //   // }));
+        //   // const isPlayerInGame =
+        //   //   Array.isArray(startedPlayerGames[0].players) &&
+        //   //   startedPlayerGames[0].players.includes(String(playerId));
+        //   // setHasJoined(isPlayerInGame); // ✅ this was missing
+
+        // } else {
+        //   console.log("Player is not in any valid game. Staying in the lobby.");
+        //   setSelectedGameId(null);
+        //   setHasJoined(false);
+        // }
         break;
       default:
         console.warn(`Unhandled action: ${action}`);
@@ -257,7 +290,7 @@ const Lobby = ({
         return;
       }
       setInvitedError(""); // Clear error
-
+      setPreSelectedGame(suggestedName);
       sendLobbyMessage({
         payload: {
           type: "lobby",
@@ -273,6 +306,7 @@ const Lobby = ({
         },
       });
     } else {
+      setPreSelectedGame(suggestedName);
       sendLobbyMessage({
         payload: {
           type: "lobby",
@@ -319,6 +353,7 @@ const Lobby = ({
 
     console.log(`${playerId} joining game... ${selectedGamestate.gameId}`);
     setIsJoining(true);
+    setPreSelectedGame(selectedGamestate.gameId);
     sendLobbyMessage({
       payload: {
         type: "lobby",

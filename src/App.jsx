@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import GameConsole from "./components/gameConsole/GameConsole";
 import useMessages from "./components/hooks/useMessages";
@@ -8,8 +8,8 @@ import ConnectionsUI from "./components/connections/ConnectionsUI";
 import Lobbies from "./components/lobby/Lobbies";
 import MessagesUI from "./components/messages/MessagesUI";
 import Players from "./components/user/Players";
-import { useLocalState } from "irisdb-hooks";
-
+import GameInviteModal from "./components/user/GameInviteModal";
+import { useNostrExtensionKey } from "./components/hooks/useNostrExtensionKey";
 console.log("pognClientConfigs", pognClientConfigs);
 
 window.onerror = function (message, source, lineno, colno, error) {
@@ -63,6 +63,11 @@ const App = () => {
   const [selectedRelayId, setSelectedRelayId] = useState(null);
   const [connections, setConnections] = useState(new Map());
   const [nostrProfileData, setNostrProfileData] = useState(null);
+  const [isInviteOpen, setInviteOpen] = useState(false);
+  const [inviteParams, setInviteParams] = useState({});
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const hasInviteUrlBeenProcessed = useRef(false);
+  const hasInviteModalBeenShown = useRef(false);
 
   const {
     messages,
@@ -71,7 +76,6 @@ const App = () => {
     gameMessages,
     handleMessage,
     handleSendMessage,
-    gameInviteMessages,
   } = useMessages(
     activePlayerId,
     connections,
@@ -79,6 +83,45 @@ const App = () => {
     setAddRelayConnections,
     setRemoveRelayConnections
   );
+
+  const { nostrPubkey } = useNostrExtensionKey();
+
+  const isNostrActivePlayer = nostrPubkey && activePlayerId === nostrPubkey;
+
+  // Handle invite URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const parsed = Object.fromEntries(params.entries());
+
+    if (parsed.invite === "true" && !hasInviteUrlBeenProcessed.current) {
+      hasInviteUrlBeenProcessed.current = true;
+
+      setInviteParams(parsed);
+      setPlayers((prev) =>
+        prev.some((p) => p.id === parsed.playerId)
+          ? prev
+          : [...prev, { id: parsed.playerId, pubkeySource: "url" }]
+      );
+      setActivePlayerId(parsed.playerId);
+    }
+  }, []);
+
+  // Trigger invite modal after connection
+  useEffect(() => {
+    if (
+      hasInviteUrlBeenProcessed.current &&
+      !hasInviteModalBeenShown.current &&
+      connections.get("lobby1")?.readyState === 1
+    ) {
+      hasInviteModalBeenShown.current = true;
+      setShowInviteModal(true);
+    }
+  }, [connections]);
+
+  const closeInvite = () => {
+    setInviteOpen(false);
+    setInviteParams(null);
+  };
 
   useEffect(() => {
     setAddRelayConnections((prev) => {
@@ -118,6 +161,19 @@ const App = () => {
   return (
     <ErrorBoundary>
       <div className="w-full max-w-[800px] flex flex-col justify-center items-center mx-auto p-4">
+        {showInviteModal && isNostrActivePlayer && (
+          <GameInviteModal
+            isOpen={isInviteOpen}
+            onClose={closeInvite}
+            urlParams={inviteParams}
+            setActivePlayerId={setActivePlayerId}
+            sendMessage={handleSendMessage}
+            connections={connections}
+            setShowInviteModal={setInviteOpen}
+            activePlayerId={activePlayerId}
+            gameInviteMessages={messages}
+          />
+        )}
         <header className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">POGN Client</h1>
           <h2 className="text-md text-gray-600">
@@ -134,8 +190,6 @@ const App = () => {
           <Players
             setActivePlayerId={setActivePlayerId}
             sendMessage={handleSendMessage}
-            connections={connections}
-            gameInviteMessages={gameInviteMessages}
             activePlayerId={activePlayerId}
             setNostrProfileData={setNostrProfileData}
             nostrProfileData={nostrProfileData}

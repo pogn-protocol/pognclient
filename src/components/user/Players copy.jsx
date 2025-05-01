@@ -3,6 +3,7 @@ import Dashboard from "./Dashboard";
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
 import { useNostrExtensionKey } from "../hooks/useNostrExtensionKey";
 import useNostr from "../hooks/useNostr";
+// import GameInviteModal from "./GameInviteModal";
 
 const defaultKeys = [
   "be7c4cf8b9db6950491f2de3ece4668a1beb93972082d021256146a2b4ae1348",
@@ -13,9 +14,18 @@ const Players = ({
   setActivePlayerId,
   setNostrProfileData,
   nostrProfileData,
+  sendMessage,
+  connections,
+  gameInviteMessages,
   activePlayerId,
 }) => {
   const [players, setPlayers] = useState([]);
+  const [isInviteOpen, setInviteOpen] = useState(false);
+  const [inviteParams, setInviteParams] = useState({});
+  const hasInviteUrlBeenProcessed = useRef(false);
+  const hasInviteModalBeenShown = useRef(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+
   const { nostrPubkey, nostrDetected, loginNostr, logoutNostr } =
     useNostrExtensionKey();
   const { nostrProfile, follows, followProfiles } = useNostr();
@@ -107,6 +117,41 @@ const Players = ({
     }
   }, [activePlayerId, players, nostrPubkey]);
 
+  // Handle invite URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const parsed = Object.fromEntries(params.entries());
+
+    if (parsed.invite === "true" && !hasInviteUrlBeenProcessed.current) {
+      hasInviteUrlBeenProcessed.current = true;
+
+      setInviteParams(parsed);
+      setPlayers((prev) =>
+        prev.some((p) => p.id === parsed.playerId)
+          ? prev
+          : [...prev, { id: parsed.playerId, pubkeySource: "url" }]
+      );
+      setActivePlayerId(parsed.playerId);
+    }
+  }, []);
+
+  // Trigger invite modal after connection
+  useEffect(() => {
+    if (
+      hasInviteUrlBeenProcessed.current &&
+      !hasInviteModalBeenShown.current &&
+      connections.get("lobby1")?.readyState === 1
+    ) {
+      hasInviteModalBeenShown.current = true;
+      setShowInviteModal(true);
+    }
+  }, [connections]);
+
+  const closeInvite = () => {
+    setInviteOpen(false);
+    setInviteParams(null);
+  };
+
   useEffect(() => {
     setPlayers((prev) => {
       const filtered = prev.filter((p) => p.pubkeySource !== "nostr");
@@ -133,6 +178,21 @@ const Players = ({
 
   return (
     <div className="w-full my-2 space-y-4 text-sm text-gray-700">
+      {/* {showInviteModal && (
+        <GameInviteModal
+          isOpen={isInviteOpen}
+          onClose={closeInvite}
+          urlParams={inviteParams}
+          setActivePlayerId={setActivePlayerId}
+          sendMessage={sendMessage}
+          connections={connections}
+          setShowInviteModal={setInviteOpen}
+          setPlayers={setPlayers}
+          activePlayerId={activePlayerId}
+          gameInviteMessages={gameInviteMessages}
+        />
+      )} */}
+
       {nostrDetected && (
         <div className="text-green-600 italic">
           ✅ Nostr extension detected!

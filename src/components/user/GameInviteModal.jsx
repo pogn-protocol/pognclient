@@ -66,6 +66,7 @@ const GameInviteModal = ({
 
     const { payload } = lastGameInviteMessage;
     const { type, action, gameId, playerId } = payload;
+    if (type !== "lobby") return;
     if (action === "refreshLobby") {
       console.log("✅ Game invite refreshLobby: " + lastGameInviteMessage);
       const { lobbyGames = [] } = payload;

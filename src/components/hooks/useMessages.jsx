@@ -12,7 +12,6 @@ export default function useMessages(
   const [sentMessages, setSentMessages] = useState({});
   const [lobbyMessages, setLobbyMessages] = useState({});
   const [gameMessages, setGameMessages] = useState({});
-  const [gameInviteMessages, setGameInviteMessages] = useState([]);
 
   const handleSendMessage = useCallback(
     (id, message) => {
@@ -53,7 +52,10 @@ export default function useMessages(
   const handleMessage = useCallback(
     (id, message) => {
       console.log(`📩 Message received from ${id}`, message);
-      if (!message?.payload) return;
+      if (!message?.payload) {
+        console.warn(`⚠️ Message payload is missing`, message);
+        return;
+      }
 
       setMessages((prev) => ({
         ...prev,
@@ -74,14 +76,13 @@ export default function useMessages(
         return;
       }
 
-      if (type === "gameInvite" || type === "lobby") {
-        console.log("Game invite message received:", message);
-        if (type === "lobby" && action !== "refreshLobby") return;
-        console.log("Game invite message received:", message);
-        setGameInviteMessages((prev) => [...prev, message]);
-        //return;
-      }
-
+      // if (type === "gameInvite" || type === "lobby") {
+      //   console.log("Game invite message received:", message);
+      //   if (type === "lobby" && action !== "refreshLobby") return;
+      //   console.log("Game invite message received:", message);
+      //   setGameInviteMessages((prev) => [...prev, message]);
+      //   //return;
+      // }
       if (type === "lobby") {
         if (action === "newLobby" && lobbyId && lobbyAddress) {
           setRemoveRelayConnections((prev) =>
@@ -125,6 +126,5 @@ export default function useMessages(
     gameMessages,
     handleMessage,
     handleSendMessage,
-    gameInviteMessages,
   };
 }
