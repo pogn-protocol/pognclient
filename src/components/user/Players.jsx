@@ -186,9 +186,9 @@ const Players = ({
       </div>
 
       <p className="text-xs text-gray-500 mt-2">
-        Selected key is stored in{" "}
+        {/* Selected key is stored in{" "}
         <code className="bg-gray-100 px-1 py-0.5 rounded">IrisDB</code> as your
-        identity.
+        identity. */}
       </p>
 
       <div className="mt-4">
