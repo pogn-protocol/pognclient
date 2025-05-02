@@ -41,11 +41,13 @@ const App = () => {
   const [selectedRelayId, setSelectedRelayId] = useState(null);
   const [connections, setConnections] = useState(new Map());
   const [nostrProfileData, setNostrProfileData] = useState(null);
-  const [isInviteOpen, setInviteOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteParams, setInviteParams] = useState({});
   const [showInviteModal, setShowInviteModal] = useState(false);
   const hasInviteUrlBeenProcessed = useRef(false);
   const hasInviteModalBeenShown = useRef(false);
+  const [players, setPlayers] = useState([]);
+  const [inviteProcessed, setInviteProcessed] = useState(false);
 
   const {
     messages,
@@ -73,7 +75,7 @@ const App = () => {
 
     if (parsed.invite === "true" && !hasInviteUrlBeenProcessed.current) {
       hasInviteUrlBeenProcessed.current = true;
-
+      setInviteProcessed(true);
       setInviteParams(parsed);
       setPlayers((prev) =>
         prev.some((p) => p.id === parsed.playerId)
@@ -86,6 +88,19 @@ const App = () => {
 
   // Trigger invite modal after connection
   useEffect(() => {
+    console.log(
+      "inviteProcessed",
+      inviteProcessed,
+      "connections",
+      connections,
+      "isNostrActivePlayer",
+      isNostrActivePlayer,
+      "hasInviteModalBeenShown",
+      hasInviteModalBeenShown.current,
+      "hasInviteUrlBeenProcessed",
+      hasInviteUrlBeenProcessed.current
+    );
+
     if (
       hasInviteUrlBeenProcessed.current &&
       !hasInviteModalBeenShown.current &&
@@ -93,12 +108,14 @@ const App = () => {
     ) {
       hasInviteModalBeenShown.current = true;
       setShowInviteModal(true);
+      setInviteOpen(true);
     }
-  }, [connections]);
+  }, [inviteProcessed, connections, isNostrActivePlayer]);
 
   const closeInvite = () => {
     setInviteOpen(false);
     setInviteParams(null);
+    setShowInviteModal(false);
   };
 
   useEffect(() => {
@@ -136,12 +153,13 @@ const App = () => {
     console.log("activePlayerId", activePlayerId);
   }, [activePlayerId]);
 
+  console.log("showInviteModal", showInviteModal);
   return (
     <ErrorBoundary>
       <div className="w-full max-w-[800px] flex flex-col justify-center items-center mx-auto p-4">
-        {showInviteModal && isNostrActivePlayer && (
+        {showInviteModal && (
           <GameInviteModal
-            isOpen={isInviteOpen}
+            isOpen={inviteOpen}
             onClose={closeInvite}
             urlParams={inviteParams}
             setActivePlayerId={setActivePlayerId}
@@ -149,7 +167,10 @@ const App = () => {
             connections={connections}
             setShowInviteModal={setInviteOpen}
             activePlayerId={activePlayerId}
-            gameInviteMessages={messages}
+            lastGameInviteMessage={
+              Object.values(messages).flat().at(-1) || null
+            }
+            setPlayers={setPlayers}
           />
         )}
         <header className="text-center">
@@ -171,6 +192,8 @@ const App = () => {
             activePlayerId={activePlayerId}
             setNostrProfileData={setNostrProfileData}
             nostrProfileData={nostrProfileData}
+            players={players}
+            setPlayers={setPlayers}
           />
           <RelayManager
             addRelayConnections={addRelayConnections}

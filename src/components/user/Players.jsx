@@ -14,8 +14,10 @@ const Players = ({
   setNostrProfileData,
   nostrProfileData,
   activePlayerId,
+  setPlayers,
+  players,
 }) => {
-  const [players, setPlayers] = useState([]);
+  // const [players, setPlayers] = useState([]);
   const { nostrPubkey, nostrDetected, loginNostr, logoutNostr } =
     useNostrExtensionKey();
   const { nostrProfile, follows, followProfiles } = useNostr();

@@ -76,6 +76,10 @@ export default function useMessages(
         return;
       }
       if (type === "lobby") {
+        if (action === "inviteVerified"|| action === "gameInviteError") {
+          console.log("Game inviteVerified ignored:", message.payload);
+          return;
+        }
         if (action === "newLobby" && lobbyId && lobbyAddress) {
           setRemoveRelayConnections((prev) =>
             prev.filter((conn) => conn.id !== lobbyId)

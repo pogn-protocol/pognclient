@@ -22,6 +22,9 @@ const GameInviteModal = ({
   const [pubkey, setPubkey] = useState(nostrPubkey); // Store the public key in state
   const [sentGameInvite, setSentGameInvite] = useState(false);
   const [verifiedGameDetails, setVerifiedGameDetails] = useState(null);
+  const [verifying, setVerifying] = useState(true);
+
+  console.log(lastGameInviteMessage);
 
   useEffect(() => {
     if (sentGameInvite) return;
@@ -54,6 +57,10 @@ const GameInviteModal = ({
   }, [urlParams, connections, sentGameInvite, sendMessage]);
 
   useEffect(() => {
+    console.log(
+      "GameInviteModal lastGameInviteMessage:",
+      lastGameInviteMessage
+    );
     if (
       !lastGameInviteMessage ||
       Object.keys(lastGameInviteMessage).length === 0
@@ -63,11 +70,28 @@ const GameInviteModal = ({
       "GameInviteModal lastGameInviteMessage:",
       lastGameInviteMessage
     );
+    if (lastGameInviteMessage.payload.type !== "lobby") return;
+    if (
+      lastGameInviteMessage.payload.action !== "gameInvite" &&
+      lastGameInviteMessage.payload.action !== "inviteVerified" &&
+      lastGameInviteMessage.payload.action !== "gameInviteError" &&
+      lastGameInviteMessage.payload.action !== "refreshLobby"
+    )
+      return;
 
+    console.log(
+      "GameInviteModal lastGameInviteMessage:",
+      lastGameInviteMessage
+    );
     const { payload } = lastGameInviteMessage;
     const { type, action, gameId, playerId } = payload;
     if (type !== "lobby") return;
-    if (action === "refreshLobby") {
+    if (
+      action === "refreshLobby" &&
+      verifiedGameDetails &&
+      nostrPubkey &&
+      pendingJoin
+    ) {
       console.log("✅ Game invite refreshLobby: " + lastGameInviteMessage);
       const { lobbyGames = [] } = payload;
       const invitedGameId = urlParams?.gameId;
@@ -84,33 +108,53 @@ const GameInviteModal = ({
         console.warn("👀 Still waiting for player to be in game...");
       }
     }
-    if (verifiedGameDetails) return;
+    //if (verifiedGameDetails) return;
     if (action === "gameInviteError") {
       console.log("❌ Game invite error: ", lastGameInviteMessage);
+      setVerifying(false);
+      setVerifiedGameDetails(null);
       return;
     }
-    if (action === "inviteVerified") {
+    if (action === "inviteVerified" && !verifiedGameDetails?.uuid) {
       console.log("✅ Game inviteVerified: " + lastGameInviteMessage);
       setVerifiedGameDetails({
         ...lastGameInviteMessage,
       });
-
+      setVerifying(false);
       return;
     }
-  }, [lastGameInviteMessage, verifiedGameDetails]);
+  }, [lastGameInviteMessage]);
 
   const handleJoinPrivateGame = async () => {
     if (!window.nostr) return;
     setPendingJoin(true);
     try {
-      await loginNostr();
+      const res = await loginNostr();
+      setNostrLogin(true);
+      console.log(nostrLogin);
+      if (!res) {
+        console.warn("❌ Nostr login failed.");
+        alert("❌ Nostr login failed.");
+        return;
+      }
     } catch (e) {
+      setPendingJoin(false);
+
       console.warn("Auth private game join failed:", e);
       alert("❌ Auth private game join failed.");
     }
   };
 
   useEffect(() => {
+    console.log(
+      "🔐 nostrPubkey:",
+      nostrPubkey,
+      "pending",
+      pendingJoin,
+      "nostrLogin",
+      nostrLogin
+    );
+    if (!nostrLogin) return;
     if (!pendingJoin) return;
     if (!nostrPubkey) return;
 
@@ -147,8 +191,8 @@ const GameInviteModal = ({
       alert("❌ Your nostr ID doesn't match the invitation.");
     }
 
-    setPendingJoin(false);
-  }, [nostrPubkey]);
+    // setPendingJoin(false);
+  }, [nostrPubkey, pendingJoin, nostrLogin]);
 
   const onCancel = () => {
     setPendingJoin(false);
@@ -186,13 +230,17 @@ const GameInviteModal = ({
               aria-label="Close"
             ></button>
           </div>
-          <div className="modal-body">
+          <div className="modal-body  break-words">
             <p>Poker and Other Games on Nostr: fast, fun, and decentralized.</p>
             <p>
               PlayerId: <strong>{urlParams.playerId}</strong>
             </p>
 
-            {verifiedGameDetails ? (
+            {verifying ? (
+              <p className="text-info text-sm mb-2">
+                ⏳ Getting game invite verification from server...
+              </p>
+            ) : verifiedGameDetails ? (
               <div>
                 <p>
                   Invited to join game: <strong>{urlParams.gameId}</strong>
@@ -212,6 +260,27 @@ const GameInviteModal = ({
                 ❌ GameInvite not verified by server. Does the game exist?
               </p>
             )}
+
+            {/* {verifiedGameDetails ? (
+              <div>
+                <p>
+                  Invited to join game: <strong>{urlParams.gameId}</strong>
+                </p>
+                <div className="text-center break-words mb-2">
+                  <JsonView
+                    data={verifiedGameDetails}
+                    shouldExpandNode={(level, value, type) =>
+                      level === 0 || type === "payload"
+                    }
+                    style={{ fontSize: "14px", lineHeight: "1.2" }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-danger text-sm mb-2">
+                ❌ GameInvite not verified by server. Does the game exist?
+              </p>
+            )} */}
 
             {nostrDetected && (
               <div className="mx-3">

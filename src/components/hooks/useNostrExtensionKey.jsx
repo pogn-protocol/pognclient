@@ -27,15 +27,21 @@ export const useNostrExtensionKey = () => {
   const loginNostr = async () => {
     if (!window.nostr) {
       console.warn("❌ Nostr extension not available");
-      return;
+      return false;
     }
 
     try {
       const pubkey = await window.nostr.getPublicKey();
+      if (!pubkey) {
+        console.warn("❌ No pubkey returned from Nostr extension");
+        return false;
+      }
       console.log("🔐 Got pubkey from extension:", pubkey);
       setNostrPubkey(pubkey);
+      return true;
     } catch (e) {
       console.warn("❌ Failed to fetch pubkey from Nostr extension:", e);
+      return false;
     }
   };
 
