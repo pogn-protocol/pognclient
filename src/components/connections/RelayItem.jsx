@@ -83,7 +83,6 @@ const RelayItem = ({
     if (lastJsonMessage && lastJsonMessage?.uuid !== prevMessage?.uuid) {
       console.log("Received message from relay:", id, lastJsonMessage);
       console.log("Previous message:", prevMessage);
-      //if .relayId doesn't == id, then return;
       if (lastJsonMessage.relayId !== id) {
         console.warn(
           `⚠️ Message from relay ${id} does not match the current relayId. Ignoring.`

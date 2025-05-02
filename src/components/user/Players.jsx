@@ -105,39 +105,11 @@ const Players = ({
   useEffect(() => {
     const storedId = sessionStorage.getItem("activePlayerId");
 
-    // ✅ Only set if not already set and valid
     if (!activePlayerId && storedId && players.some((p) => p.id === storedId)) {
       setActivePlayerId(storedId);
     }
   }, [players, activePlayerId]);
 
-  // useEffect(() => {
-  //   if (!activePlayerId && players.length > 0) {
-  //     const fallback =
-  //       (nostrPubkey && players.find((p) => p.id === nostrPubkey)) ||
-  //       players[0];
-  //     if (fallback) {
-  //       setActivePlayerId(fallback.id);
-  //     }
-  //   }
-  // }, [activePlayerId, players, nostrPubkey]);
-
-  // useEffect(() => {
-  //   setPlayers((prev) => {
-  //     const filtered = prev.filter((p) => p.pubkeySource !== "nostr");
-
-  //     if (!nostrPubkey) return filtered;
-
-  //     const alreadyExists = filtered.some((p) => p.id === nostrPubkey);
-  //     if (alreadyExists) return filtered;
-
-  //     return [{ id: nostrPubkey, pubkeySource: "nostr" }, ...filtered];
-  //   });
-
-  //   if (nostrPubkey) {
-  //     setActivePlayerId(nostrPubkey);
-  //   }
-  // }, [nostrPubkey]);
   useEffect(() => {
     if (!nostrPubkey) return;
 

@@ -75,14 +75,6 @@ export default function useMessages(
 
         return;
       }
-
-      // if (type === "gameInvite" || type === "lobby") {
-      //   console.log("Game invite message received:", message);
-      //   if (type === "lobby" && action !== "refreshLobby") return;
-      //   console.log("Game invite message received:", message);
-      //   setGameInviteMessages((prev) => [...prev, message]);
-      //   //return;
-      // }
       if (type === "lobby") {
         if (action === "newLobby" && lobbyId && lobbyAddress) {
           setRemoveRelayConnections((prev) =>

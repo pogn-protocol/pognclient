@@ -32,7 +32,6 @@ window.addEventListener("unhandledrejection", function (event) {
 
 const App = () => {
   const [activePlayerId, setActivePlayerId] = useState(null);
-  // );
   const [gamesToInit, setGamesToInit] = useState(new Map());
   const [sendMessageToUrl, setSendMessageToUrl] = useState(() => () => {});
   const [addRelayConnections, setAddRelayConnections] = useState([]);

@@ -5,7 +5,6 @@ import * as identiconSprites from "@dicebear/avatars-identicon-sprites";
 const Dashboard = ({ activePlayerId, activeProfile }) => {
   console.log("Dashboard activePlayerId", activePlayerId);
   console.log("Dashboard activeProfile", activeProfile);
-  // if (!activeProfile) return null;
 
   const displayName =
     activeProfile?.display_name || activeProfile?.name || "Player";

@@ -83,9 +83,6 @@ const Lobby = ({
           playerId,
         },
       });
-
-      // setSignedInLobbies((prev) => new Set(prev).add(lobbyId));
-      // setSignedIntoLobby(true);
     } else {
       console.warn(`❌ Lobby ${lobbyId} connection not ready.`);
     }
@@ -167,62 +164,12 @@ const Lobby = ({
             Array.isArray(targetGame.players) &&
               targetGame.players.includes(String(playerId))
           );
-          //setPreSelectedGame(null);
         } else {
           setSelectedGameId(null);
           setSelectedGamestate({});
           setHasJoined(false);
         }
         setPreSelectedGame(null);
-
-        // if (startedPlayerGames.length > 0) {
-        //   console.log("Player is in a valid game:", startedPlayerGames);
-        //   console.log(startedPlayerGames);
-        //   console.log(
-        //     startedPlayerGames,
-        //     "Setting games to init:",
-        //     startedPlayerGames,
-        //     "For lobbyId:",
-        //     lobbyId
-        //   );
-
-        //   const gamesMissingRelay = startedPlayerGames.filter(
-        //     (game) => !game.relayId
-        //   );
-        //   if (gamesMissingRelay.length > 0) {
-        //     console.error(
-        //       "⚠️ Some games are missing relayId:",
-        //       gamesMissingRelay
-        //     );
-        //   }
-
-        //   setGamesToInit((prev) => {
-        //     const updatedMap = new Map(prev);
-        //     updatedMap.set(lobbyId, startedPlayerGames);
-        //     return updatedMap;
-        //   });
-        //   setIsJoining(false);
-
-        //   const currentStillValid = startedPlayerGames.find(
-        //     (g) => g.gameId === selectedGameId
-        //   );
-
-        //   // const gameId = startedPlayerGames[0].gameId; // Get the first gameId from the filtered games
-        //   // setSelectedGameId(gameId); // Highlight the selected game
-        //   // setSelectedGamestate((prevState) => ({
-        //   //   ...prevState,
-        //   //   ...startedPlayerGames[0],
-        //   // }));
-        //   // const isPlayerInGame =
-        //   //   Array.isArray(startedPlayerGames[0].players) &&
-        //   //   startedPlayerGames[0].players.includes(String(playerId));
-        //   // setHasJoined(isPlayerInGame); // ✅ this was missing
-
-        // } else {
-        //   console.log("Player is not in any valid game. Staying in the lobby.");
-        //   setSelectedGameId(null);
-        //   setHasJoined(false);
-        // }
         break;
       default:
         console.warn(`Unhandled action: ${action}`);
@@ -384,12 +331,9 @@ const Lobby = ({
 
   useEffect(() => {
     if (isPrivateGame && selectedGameType) {
-      //const config = GAME_CONFIGS[selectedGameType];
       const config = gameConfigs[selectedGameType];
       if (config) {
         setMaxPlayers(config.maxPlayers);
-
-        // Auto-fill your own playerId as the first invited player
         setInvitedPlayers((prev) => {
           const updated = [...prev];
           updated[0] = playerId; // Ensure index 0 is always yours
@@ -487,13 +431,6 @@ const Lobby = ({
                 value={selectedGameType}
                 onChange={(e) => setSelectedGameType(e.target.value)}
               >
-                {/* {Object.entries(GAME_CONFIGS).map(([key]) => (
-                  <option key={key} value={key}>
-                    {key
-                      .replace(/-/g, " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </option>
-                ))} */}
                 {Object.entries(gameConfigs).map(([key]) => (
                   <option key={key} value={key}>
                     {key
@@ -527,7 +464,6 @@ const Lobby = ({
                 </label>
               </div>
 
-              {/* -- Private Game Invite Block -- */}
               {isPrivateGame && follows.length > 0 && followProfiles && (
                 <div className="mt-4">
                   <h6 className="font-semibold text-sm mb-2">
@@ -654,33 +590,6 @@ const Lobby = ({
                 >
                   Refresh Lobby
                 </button>
-                {/* <button
-                  onClick={handleJoinGame}
-                  disabled={
-                    hasJoined ||
-                    isJoining ||
-                    lobbyPlayers.length === 0 ||
-                    !selectedGamestate.gameId ||
-                    selectedGamestate.players.length >=
-                      selectedGamestate.instance.maxPlayers
-                  }
-                  className={`px-4 py-2 rounded font-semibold text-white text-sm ${
-                    hasJoined ||
-                    isJoining ||
-                    lobbyPlayers.length === 0 ||
-                    !selectedGamestate.gameId ||
-                    selectedGamestate.players.length >=
-                      selectedGamestate.instance.maxPlayers
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-green-600 hover:bg-green-700"
-                  }`}
-                >
-                  {hasJoined
-                    ? "Joined"
-                    : isJoining
-                    ? "Joining..."
-                    : "Join Game"}
-                </button> */}
                 {!hasJoined && (
                   <button
                     onClick={handleJoinGame}
