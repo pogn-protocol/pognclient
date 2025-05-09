@@ -12,9 +12,19 @@ const CONFIG = {
 
 const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const [seatCount, setSeatCount] = useState(6);
-  const [playersAtTable, setPlayersAtTable] = useState(Array(6).fill(null));
+  const [playersAtTable, setPlayersAtTable] = useState([]);
   const tableRef = useRef(null);
   const [tableSize, setTableSize] = useState({ width: 600, height: 300 });
+
+  useEffect(() => {
+    setPlayersAtTable((prev) => {
+      const updated = Array(seatCount).fill(null);
+      for (let i = 0; i < Math.min(prev.length, seatCount); i++) {
+        updated[i] = prev[i];
+      }
+      return updated;
+    });
+  }, [seatCount]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -66,6 +76,57 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const seatOffsetX = radiusX * CONFIG.seatPaddingRatio;
   const seatOffsetY = radiusY * CONFIG.seatPaddingRatio;
 
+  function getCards() {
+    const CARD_BACK_URL = "https://deckofcardsapi.com/static/img/back.png";
+    return Array(5)
+      .fill(null)
+      .map((_, idx) => ({
+        id: idx,
+        src: CARD_BACK_URL,
+        alt: "Card",
+      }));
+  }
+
+  function getFaceUpCards() {
+    const suits = ["S", "H", "D", "C"]; // Spades, Hearts, Diamonds, Clubs
+    const values = [
+      "A",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "J",
+      "Q",
+      "K",
+    ];
+    const deck = [];
+
+    for (let suit of suits) {
+      for (let value of values) {
+        const code = value + suit;
+        deck.push({
+          id: code,
+          src: `https://deckofcardsapi.com/static/img/${code}.png`,
+          alt: `${value} of ${suit}`,
+        });
+      }
+    }
+
+    // Shuffle deck
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    // return deck.slice(0, 5); // Return 5 random cards
+    return [];
+  }
+
   return (
     <div className="container-fluid py-4">
       <div className="d-flex flex-column align-items-center">
@@ -94,14 +155,57 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
 
         <div
           ref={tableRef}
-          className="gameTableDiv position-relative m-4 px-4"
+          className="gameTableDiv position-relative m-5 px-4"
           style={{
             width: "80%",
             maxWidth: "900px",
             aspectRatio: CONFIG.tableRatio,
           }}
         >
-          <div className="gameTable-center">Game Board</div>
+          <div className="gameTable-center">
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                fontSize: "4vw",
+                fontWeight: 700,
+                color: "rgba(255, 255, 255, 0.25)",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+                zIndex: 0,
+                textShadow: "1px 1px 2px rgba(0,0,0,0.4)",
+              }}
+            >
+              ♠ Game Board ♣
+            </div>
+
+            <div
+              style={{
+                position: "relative",
+                zIndex: 1,
+                display: "flex",
+                gap: "8px",
+                justifyContent: "center",
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              {getFaceUpCards().map((card) => (
+                <img
+                  key={card.id}
+                  src={card.src}
+                  alt={card.alt}
+                  style={{
+                    width: "40px",
+                    height: "auto",
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
           {Array(seatCount)
             .fill(null)

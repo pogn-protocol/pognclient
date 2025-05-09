@@ -7,6 +7,8 @@ const HUD_CONFIG = {
   heightPercent: 25,
 };
 
+const CARD_BACK_URL = "https://deckofcardsapi.com/static/img/back.png";
+
 const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
   const [isDealer, setIsDealer] = useState(true);
 
@@ -24,7 +26,6 @@ const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
 
   return (
     <div
-      className="seat"
       style={{
         position: "absolute",
         top: `${seat.top}%`,
@@ -32,27 +33,53 @@ const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
         width: `${HUD_CONFIG.widthPercent}%`,
         height: `${HUD_CONFIG.heightPercent}%`,
         transform: "translate(-50%, -50%)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 0,
-        boxSizing: "border-box",
-        overflow: "hidden",
       }}
       onClick={onClick}
     >
+      {/* Hole cards behind HUD */}
+      {playerId && (
+        <div
+          style={{
+            position: "absolute",
+            top: "-50%", // position above HUD
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: "4px",
+            zIndex: 0,
+          }}
+        >
+          <img
+            src={CARD_BACK_URL}
+            alt="Card"
+            style={{ width: "30px", height: "auto" }}
+          />
+          <img
+            src={CARD_BACK_URL}
+            alt="Card"
+            style={{ width: "30px", height: "auto" }}
+          />
+        </div>
+      )}
+
+      {/* HUD foreground */}
       <div
+        className="seat"
         style={{
           width: "100%",
           height: "100%",
-          padding: "4%",
-          boxSizing: "border-box",
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          padding: "4%",
+          boxSizing: "border-box",
           gap: "4%",
+          backgroundColor: "white",
+          border: "1px solid black",
+          borderRadius: "0.5rem",
+          zIndex: 1,
+          position: "relative",
         }}
       >
         {/* Left: Avatar */}
@@ -103,7 +130,6 @@ const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
             {displayName}
           </span>
 
-          {/* Points + Dealer */}
           <div
             style={{
               marginTop: "6%",
@@ -113,7 +139,6 @@ const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
               alignItems: "center",
             }}
           >
-            {/* Points */}
             {playerId && (
               <span
                 style={{
@@ -126,7 +151,6 @@ const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
               </span>
             )}
 
-            {/* Dealer button */}
             {playerId && isDealer && (
               <div
                 style={{

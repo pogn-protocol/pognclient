@@ -11,8 +11,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 120px;
-  height: 80px;
+  width: 80%;
+  height: 50%;
   transform: translate(-50%, -50%);
   background-color: #212529;
   color: white;
@@ -22,8 +22,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1;
+  z-index: 0;
 }
+
 .seat {
   position: absolute;
   background-color: white;
@@ -31,7 +32,12 @@
   border-radius: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease-in-out;
+  z-index: 1;
 }
 .seat:hover {
   background-color: #ffc107;
+}
+
+.hole-cards {
+  z-index: -2 !important;
 }
