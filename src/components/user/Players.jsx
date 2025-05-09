@@ -130,6 +130,18 @@ const Players = ({
     setActivePlayerId(null); // 🧼 also clears IrisDB entry
   };
 
+  useEffect(() => {
+    if (!nostrProfileData?.id) return;
+
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === nostrProfileData.id
+          ? { ...p, ...nostrProfileData } // merge in extra profile fields
+          : p
+      )
+    );
+  }, [nostrProfileData?.id]);
+
   return (
     <div className="w-full my-2 space-y-4 text-sm text-gray-700">
       {nostrDetected && (

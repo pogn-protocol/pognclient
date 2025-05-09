@@ -10,6 +10,7 @@ import MessagesUI from "./components/messages/MessagesUI";
 import Players from "./components/user/Players";
 import GameInviteModal from "./components/user/GameInviteModal";
 import { useNostrExtensionKey } from "./components/hooks/useNostrExtensionKey";
+import GameTable from "./components/gameTable/GameTable";
 console.log("pognClientConfigs", pognClientConfigs);
 
 window.onerror = function (message, source, lineno, colno, error) {
@@ -154,6 +155,26 @@ const App = () => {
   }, [activePlayerId]);
 
   console.log("showInviteModal", showInviteModal);
+
+  const [playersAtTable, setPlayersAtTable] = useState(Array(6).fill(null));
+
+  const handleSit = (seatIndex) => {
+    setPlayersAtTable((prev) => {
+      if (!activePlayerId) return prev;
+
+      // Prevent sitting if someone else is already there
+      if (prev[seatIndex] && prev[seatIndex] !== activePlayerId) return prev;
+
+      // Remove player from any seat they’re already in
+      const newSeats = prev.map((id) => (id === activePlayerId ? null : id));
+
+      // Sit at the selected seat
+      newSeats[seatIndex] = activePlayerId;
+
+      return newSeats;
+    });
+  };
+
   return (
     <ErrorBoundary>
       <div className="w-full max-w-[800px] flex flex-col justify-center items-center mx-auto p-4">
@@ -186,6 +207,14 @@ const App = () => {
           </p>
         </div>
         <div className="w-full max-w-screen-xl flex flex-col gap-2">
+          <GameTable
+            playersAtTable={playersAtTable}
+            onSit={handleSit}
+            activePlayerId={activePlayerId}
+            players={players}
+            nostrProfileData={nostrProfileData}
+          />
+
           <Players
             setActivePlayerId={setActivePlayerId}
             sendMessage={handleSendMessage}
