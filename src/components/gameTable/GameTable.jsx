@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./gameTable.css";
 import PlayerHUD from "./PlayerHUD";
@@ -15,6 +15,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const [playersAtTable, setPlayersAtTable] = useState([]);
   const tableRef = useRef(null);
   const [tableSize, setTableSize] = useState({ width: 600, height: 300 });
+  const [faceUpCards, setFaceUpCards] = useState(() => getRandomCards());
 
   useEffect(() => {
     setPlayersAtTable((prev) => {
@@ -76,19 +77,8 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const seatOffsetX = radiusX * CONFIG.seatPaddingRatio;
   const seatOffsetY = radiusY * CONFIG.seatPaddingRatio;
 
-  function getCards() {
-    const CARD_BACK_URL = "https://deckofcardsapi.com/static/img/back.png";
-    return Array(5)
-      .fill(null)
-      .map((_, idx) => ({
-        id: idx,
-        src: CARD_BACK_URL,
-        alt: "Card",
-      }));
-  }
-
-  function getFaceUpCards() {
-    const suits = ["S", "H", "D", "C"]; // Spades, Hearts, Diamonds, Clubs
+  function getRandomCards() {
+    const suits = ["S", "H", "D", "C"];
     const values = [
       "A",
       "2",
@@ -106,27 +96,21 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
     ];
     const deck = [];
 
-    for (let suit of suits) {
-      for (let value of values) {
-        const code = value + suit;
+    for (let s of suits)
+      for (let v of values)
         deck.push({
-          id: code,
-          src: `https://deckofcardsapi.com/static/img/${code}.png`,
-          alt: `${value} of ${suit}`,
+          id: v + s,
+          src: `https://deckofcardsapi.com/static/img/${v + s}.png`,
+          alt: `${v} of ${s}`,
         });
-      }
-    }
 
-    // Shuffle deck
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
 
-    // return deck.slice(0, 5); // Return 5 random cards
-    return [];
+    return deck.slice(0, 5);
   }
-
   return (
     <div className="container-fluid py-4">
       <div className="d-flex flex-column align-items-center">
@@ -157,7 +141,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
           ref={tableRef}
           className="gameTableDiv position-relative m-5 px-4"
           style={{
-            width: "80%",
+            width: "85%",
             maxWidth: "900px",
             aspectRatio: CONFIG.tableRatio,
           }}
@@ -178,7 +162,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                 textShadow: "1px 1px 2px rgba(0,0,0,0.4)",
               }}
             >
-              ♠ Game Board ♣
+              ♠ POGN Game Board ♣
             </div>
 
             <div
@@ -192,13 +176,13 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                 flexWrap: "wrap",
               }}
             >
-              {getFaceUpCards().map((card) => (
+              {faceUpCards.map((card) => (
                 <img
                   key={card.id}
                   src={card.src}
                   alt={card.alt}
                   style={{
-                    width: "40px",
+                    width: "clamp(30px, 7vw, 60px)",
                     height: "auto",
                     flexShrink: 0,
                   }}
@@ -220,6 +204,8 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
               return (
                 <PlayerHUD
                   key={idx}
+                  seatIndex={idx}
+                  seatCount={seatCount}
                   playerId={playerId}
                   playerObj={playerObj}
                   seat={{

@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { createAvatar } from "@dicebear/avatars";
 import * as identiconSprites from "@dicebear/avatars-identicon-sprites";
-
+import PlayerBets from "./PlayerBets";
 const HUD_CONFIG = {
-  widthPercent: 35,
+  widthPercent: 30,
   heightPercent: 25,
 };
 
 const CARD_BACK_URL = "https://deckofcardsapi.com/static/img/back.png";
+const CHIP_URL =
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Poker_chip_red.svg/40px-Poker_chip_red.svg.png";
 
-const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
+const PlayerHUD = ({
+  playerId,
+  playerObj,
+  seat,
+  onClick,
+  seatIndex,
+  seatCount,
+}) => {
   const [isDealer, setIsDealer] = useState(true);
 
   const profilePic =
@@ -165,6 +174,12 @@ const PlayerHUD = ({ playerId, playerObj, seat, onClick }) => {
                 D
               </div>
             )}
+
+            <PlayerBets
+              seatIndex={seatIndex}
+              totalSeats={seatCount}
+              amount={100}
+            />
           </div>
         </div>
       </div>
