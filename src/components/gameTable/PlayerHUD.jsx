@@ -21,6 +21,7 @@ const PlayerHUD = ({
   currentBet,
   isDealer,
   gameState,
+  isCurrentTurn,
 }) => {
   //const [isDealer, setIsDealer] = useState(true);
 
@@ -91,7 +92,7 @@ const PlayerHUD = ({
           boxSizing: "border-box",
           gap: "4%",
           backgroundColor: "white",
-          border: "1px solid black",
+          border: isCurrentTurn ? "3px solid #007bff" : "1px solid black",
           borderRadius: "0.5rem",
           zIndex: 1,
           position: "relative",

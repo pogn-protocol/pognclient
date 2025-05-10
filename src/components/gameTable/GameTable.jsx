@@ -10,6 +10,7 @@ import {
   isRoundOver,
   getNextStreet,
 } from "./pokerUtils";
+import Ranker from "handranker";
 
 const CONFIG = {
   seatCountMin: 2,
@@ -54,7 +55,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       "7",
       "8",
       "9",
-      "10",
+      "0",
       "J",
       "Q",
       "K",
@@ -78,6 +79,16 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
 
+    // const tenOfSpades = {
+    //   id: "10S",
+    //   src: `https://deckofcardsapi.com/static/img/0S.png`,
+    //   alt: "10 of Spades",
+    //   value: "0",
+    //   suit: "S",
+    // };
+
+    // deck.unshift(tenOfSpades); // force it as first flop card
+
     return deck;
   }
 
@@ -91,23 +102,31 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       newHands[id] = [deck.pop(), deck.pop()];
     }
 
-    setGameState((prev) => ({
-      ...prev,
-      deck,
-      communityCards: [],
-      playerHands: newHands,
-      turnsInRound: [],
-      street: "preflop",
-      playerActions: {},
-      currentTurnIndex: getFirstToActIndex(
-        prev.dealerIndex,
-        playersAtTable.length,
-        true
-      ),
-    }));
+    setGameState((prev) => {
+      const nextDealerIndex = (prev.dealerIndex + 1) % playersAtTable.length;
+      return {
+        ...prev,
+        dealerIndex: nextDealerIndex,
+        currentTurnIndex: getFirstToActIndex(
+          nextDealerIndex,
+          playersAtTable.length,
+          true
+        ),
+        deck,
+        communityCards: [],
+        playerHands: {}, // <- EMPTY for now
+        turnsInRound: [],
+        street: "preflop",
+        playerActions: {},
+      };
+    });
 
-    setPlayerBets({});
-    setPotTotal(0);
+    setTimeout(() => {
+      setGameState((prev) => ({
+        ...prev,
+        playerHands: newHands, // <- delayed
+      }));
+    }, 0);
   }
 
   const botId = "pokerBot";
@@ -199,14 +218,26 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       "K",
     ];
     const deck = [];
-
-    for (let s of suits)
-      for (let v of values)
+    for (let s of suits) {
+      for (let v of values) {
+        const code = (v === "10" ? "0" : v) + s;
         deck.push({
           id: v + s,
-          src: `https://deckofcardsapi.com/static/img/${v + s}.png`,
+          src: `https://deckofcardsapi.com/static/img/${code}.png`,
           alt: `${v} of ${s}`,
+          value: v,
+          suit: s,
         });
+      }
+    }
+
+    // for (let s of suits)
+    //   for (let v of values)
+    //     deck.push({
+    //       id: v + s,
+    //       src: `https://deckofcardsapi.com/static/img/${v + s}.png`,
+    //       alt: `${v} of ${s}`,
+    //     });
 
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -276,11 +307,18 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       const botBet = smallBlind;
 
       setTimeout(() => {
-        setPotTotal((prev) => prev + botBet);
-        setPlayerBets((prev) => ({
-          ...prev,
-          [botId]: botBet,
-        }));
+        setPlayerBets((prev) => {
+          const newBets = {
+            ...prev,
+            [botId]: (prev[botId] || 0) + betAmount,
+          };
+          const newTotal = Object.values(newBets).reduce(
+            (sum, val) => sum + val,
+            0
+          );
+          setPotTotal(newTotal); // 💥 update pot now
+          return newBets;
+        });
 
         setGameState((prev) => {
           const nextIndex = getNextTurnIndex(
@@ -291,8 +329,11 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
 
           const uniqueTurns = new Set(updatedTurns);
           const isRoundComplete = uniqueTurns.size === activePlayers.length;
-
-          if (isRoundComplete) botActedRef.current = false;
+          if (isRoundComplete) {
+            setTimeout(() => {
+              setPlayerBets({}); // 🔥 clear bets after delay
+            }, 1000); // 1 second delay before clearing chips
+          }
 
           return {
             ...prev,
@@ -326,31 +367,238 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
 
   useEffect(() => {
     if (gameState.street === "flop" && gameState.communityCards.length === 0) {
-      setGameState((prev) => ({
-        ...prev,
-        communityCards: prev.deck.slice(0, 3),
-        deck: prev.deck.slice(3),
-      }));
+      setTimeout(() => {
+        setGameState((prev) => ({
+          ...prev,
+          communityCards: prev.deck.slice(0, 3),
+          deck: prev.deck.slice(3),
+        }));
+      }, 0);
     } else if (
       gameState.street === "turn" &&
       gameState.communityCards.length === 3
     ) {
-      setGameState((prev) => ({
-        ...prev,
-        communityCards: [...prev.communityCards, prev.deck[0]],
-        deck: prev.deck.slice(1),
-      }));
+      setTimeout(() => {
+        setGameState((prev) => ({
+          ...prev,
+          communityCards: [...prev.communityCards, prev.deck[0]],
+          deck: prev.deck.slice(1),
+        }));
+      }, 0);
     } else if (
       gameState.street === "river" &&
       gameState.communityCards.length === 4
     ) {
+      setTimeout(() => {
+        setGameState((prev) => ({
+          ...prev,
+          communityCards: [...prev.communityCards, prev.deck[0]],
+          deck: prev.deck.slice(1),
+        }));
+      }, 0);
+    } else if (
+      gameState.street === "showdown" &&
+      gameState.communityCards.length === 5
+    ) {
+      const board = gameState.communityCards.map((c) => {
+        const r = c.value === "0" ? "T" : c.value;
+        return r + c.suit.toLowerCase();
+      });
+
+      const hands = Object.entries(gameState.playerHands).map(
+        ([playerId, hand]) => ({
+          id: playerId,
+          cards: hand.map((c) => {
+            const r = c.value === "0" ? "T" : c.value;
+            return r + c.suit.toLowerCase();
+          }),
+        })
+      );
+
+      const result = Ranker.orderHands(hands, board);
+      const flat = result.flat();
+      const winner = flat[0];
+
       setGameState((prev) => ({
         ...prev,
-        communityCards: [...prev.communityCards, prev.deck[0]],
-        deck: prev.deck.slice(1),
+        showdownResults: flat,
+        showdownWinner: winner.id,
       }));
+
+      setTimeout(() => {
+        setGameState((prev) => ({
+          ...prev,
+          communityCards: [],
+          playerHands: {},
+          turnsInRound: [],
+          playerActions: {},
+          showdownResults: [],
+          showdownWinner: null,
+          street: "reset",
+        }));
+        setPlayerBets({});
+        setPotTotal(0);
+        setTimeout(() => {
+          startNewHand();
+        }, 500);
+      }, 2000);
     }
   }, [gameState.street]);
+  // useEffect(() => {
+  //   if (gameState.street === "flop" && gameState.communityCards.length === 0) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: prev.deck.slice(0, 3),
+  //         deck: prev.deck.slice(3),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "turn" &&
+  //     gameState.communityCards.length === 3
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [...prev.communityCards, prev.deck[0]],
+  //         deck: prev.deck.slice(1),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "river" &&
+  //     gameState.communityCards.length === 4
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [...prev.communityCards, prev.deck[0]],
+  //         deck: prev.deck.slice(1),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "showdown" &&
+  //     gameState.communityCards.length === 5
+  //   ) {
+  //     const results = [];
+
+  //     for (const [playerId, hand] of Object.entries(gameState.playerHands)) {
+  //       const cards = [...hand, ...gameState.communityCards];
+  //       const code = (v) => (v === "10" ? "T" : v);
+  //       const handStrs = cards.map((c) => code(c.value) + c.suit);
+  //       const evalResult = PokerEvaluator.evalHand(handStrs);
+  //       results.push({
+  //         playerId,
+  //         handName: evalResult.handName,
+  //         handRank: evalResult.handRank,
+  //       });
+  //     }
+
+  //     const winner = results.reduce(
+  //       (best, r) => (r.handRank > best.handRank ? r : best),
+  //       results[0]
+  //     );
+
+  //     setGameState((prev) => ({
+  //       ...prev,
+  //       showdownResults: results,
+  //       showdownWinner: winner.playerId,
+  //     }));
+
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [],
+  //         playerHands: {},
+  //         turnsInRound: [],
+  //         playerActions: {},
+  //         showdownResults: [],
+  //         showdownWinner: null,
+  //         street: "reset",
+  //       }));
+  //       setPlayerBets({});
+  //       setPotTotal(0);
+  //       setTimeout(() => {
+  //         startNewHand();
+  //       }, 500);
+  //     }, 2000);
+  //   }
+  // }, [gameState.street]);
+  // useEffect(() => {
+  //   if (gameState.street === "flop" && gameState.communityCards.length === 0) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: prev.deck.slice(0, 3),
+  //         deck: prev.deck.slice(3),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "turn" &&
+  //     gameState.communityCards.length === 3
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [...prev.communityCards, prev.deck[0]],
+  //         deck: prev.deck.slice(1),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "river" &&
+  //     gameState.communityCards.length === 4
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [...prev.communityCards, prev.deck[0]],
+  //         deck: prev.deck.slice(1),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "showdown" &&
+  //     gameState.communityCards.length === 5
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [],
+  //         playerHands: {},
+  //         turnsInRound: [],
+  //         playerActions: {},
+  //         street: "reset",
+  //       }));
+  //       setPlayerBets({});
+  //       setPotTotal(0);
+
+  //       setTimeout(() => {
+  //         startNewHand();
+  //       }, 500);
+  //     }, 1200);
+  //   }
+  // }, [gameState.street]);
+  const getPlayerHandRank = () => {
+    const playerHand = gameState.playerHands[activePlayerId] || [];
+    const board = gameState.communityCards || [];
+
+    if (playerHand.length < 2 || board.length + playerHand.length < 5)
+      return null;
+
+    const toRankerFormat = (card) => {
+      const rank = card.value === "0" ? "T" : card.value;
+      const suit = card.suit.toLowerCase(); // S, H, D, C → s, h, d, c
+      return rank + suit;
+    };
+
+    const cards = [...playerHand, ...board].map(toRankerFormat);
+
+    try {
+      const result = Ranker.getHand(cards);
+      return result?.description || null;
+    } catch (err) {
+      console.warn("Ranker failed on cards:", cards, err);
+      return null;
+    }
+  };
 
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
   console.log("activePlayerId ", activePlayerId);
@@ -359,6 +607,33 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   console.log("playerBets ", playerBets);
   return (
     <div className="container-fluid py-4">
+      {gameState.showdownWinner && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center"
+          style={{ zIndex: 9999 }}
+        >
+          <div
+            className="bg-white rounded p-4 shadow-lg text-center"
+            style={{ maxWidth: "400px" }}
+          >
+            <h3 className="mb-3">🏆 Winner</h3>
+            <p className="mb-2">
+              <strong>
+                {allPlayers.find((p) => p.id === gameState.showdownWinner)
+                  ?.name || gameState.showdownWinner.slice(0, 6)}
+              </strong>
+            </p>
+            <p className="text-muted">
+              {
+                gameState.showdownResults?.find(
+                  (r) => r.id === gameState.showdownWinner
+                )?.description
+              }
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="d-flex flex-column align-items-center">
         <h2 className="text-center mb-3">Demo Table</h2>
 
@@ -399,31 +674,36 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
           Leave Table
         </button>
 
-        {currentTurnPlayerId && (
-          <div className="mb-3 text-center">
-            <span className="badge bg-info text-dark">
-              Turn:{" "}
-              {allPlayers.find((p) => p.id === currentTurnPlayerId)?.name ||
-                currentTurnPlayerId.slice(0, 6)}
-            </span>
-          </div>
-        )}
-        <div className="mb-2 text-center">
-          <span className="badge bg-warning text-dark">
-            Street: {gameState.street.toUpperCase()}
-          </span>
-        </div>
-        {gameState.turnsInRound.length > 0 && (
+        <div
+          className="mb-5"
+          style={{ minHeight: "150px", maxHeight: "300px", overflowY: "auto" }}
+        >
+          {currentTurnPlayerId && (
+            <div className="mb-3 text-center">
+              <span className="badge bg-info text-dark">
+                Turn:{" "}
+                {allPlayers.find((p) => p.id === currentTurnPlayerId)?.name ||
+                  currentTurnPlayerId.slice(0, 6)}
+              </span>
+            </div>
+          )}
           <div className="mb-2 text-center">
-            <span className="badge bg-secondary">
-              Actions this round: {gameState.turnsInRound.length}
+            <span className="badge bg-warning text-dark">
+              Street: {gameState.street.toUpperCase()}
             </span>
           </div>
-        )}
+          {gameState.turnsInRound.length > 0 && (
+            <div className="mb-5 text-center">
+              <span className="badge bg-secondary">
+                Actions this round: {gameState.turnsInRound.length}
+              </span>
+            </div>
+          )}
+        </div>
 
         <div
           ref={tableRef}
-          className="gameTableDiv position-relative m-5 px-4"
+          className="gameTableDiv position-relative mb-5 px-4"
           style={{
             width: "85%",
             maxWidth: "900px",
@@ -533,6 +813,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                     }
                   }}
                   gameState={gameState}
+                  isCurrentTurn={playerId === currentTurnPlayerId}
                 />
               );
             })}
@@ -571,7 +852,11 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
               </button>
             </div>
 
-            {/* Action Buttons */}
+            {getPlayerHandRank() && (
+              <div className="text-center my-3">
+                <span className="badge bg-success">{getPlayerHandRank()}</span>
+              </div>
+            )}
             <div
               className="btn-group mb-2 w-100 gap-2"
               role="group"
@@ -588,11 +873,23 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => {
-                  setPotTotal((prev) => prev + betAmount);
-                  setPlayerBets((prev) => ({
-                    ...prev,
-                    [activePlayerId]: betAmount,
-                  }));
+                  setPlayerBets((prev) => {
+                    const newBets = {
+                      ...prev,
+                      [activePlayerId]: (prev[activePlayerId] || 0) + betAmount,
+                    };
+                    const newTotal = Object.values(newBets).reduce(
+                      (sum, val) => sum + val,
+                      0
+                    );
+                    setPotTotal(newTotal); // 💥 update pot now
+                    return newBets;
+                  });
+
+                  // setPlayerBets((prev) => ({
+                  //   ...prev,
+                  //   [activePlayerId]: betAmount,
+                  // }));
                   setGameState((prev) => {
                     const nextIndex = getNextTurnIndex(
                       prev.currentTurnIndex,
@@ -604,6 +901,12 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                     const uniqueTurns = new Set(updatedTurns);
                     const isRoundComplete =
                       uniqueTurns.size === activePlayers.length;
+
+                    if (isRoundComplete) {
+                      setTimeout(() => {
+                        setPlayerBets({}); // 🔥 clear bets after delay
+                      }, 1000); // 1 second delay before clearing chips
+                    }
 
                     return {
                       ...prev,
