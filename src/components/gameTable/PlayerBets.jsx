@@ -6,8 +6,8 @@ const getBetStyle = (seatIndex, totalSeats) => {
     1: [{ top: "45%", left: "50%" }],
 
     2: [
-      { top: "130%", left: "40%" },
-      { top: "-30%", left: "50%" },
+      { top: "150%", left: "40%" },
+      { top: "-50%", left: "50%" },
     ],
 
     3: [
@@ -19,7 +19,7 @@ const getBetStyle = (seatIndex, totalSeats) => {
     4: [
       { top: "130%", left: "40%" },
       { top: "170%", left: "-25%" },
-      { top: "-30%", left: "50%" },
+      { top: "-30%", left: "-10%" },
       { top: "-70%", left: "125%" },
     ],
 
@@ -35,7 +35,7 @@ const getBetStyle = (seatIndex, totalSeats) => {
       { top: "130%", left: "40%" },
       { top: "45%", left: "-35%" },
       { top: "55%", left: "-30%" },
-      { top: "-30%", left: "50%" },
+      { top: "-25%", left: "-5%" },
       { top: "55%", left: "125%" },
       { top: "45%", left: "125%" },
     ],

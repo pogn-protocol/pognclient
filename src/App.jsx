@@ -200,12 +200,7 @@ const App = () => {
             Poker and Other Game On NOSTR
           </h2>
         </header>
-        <div className="">
-          <p className="italic text-gray-600">
-            Hint: For demo play of auto-generated games, open two clients and
-            choose one of the provided IDs for each player.
-          </p>
-        </div>
+
         <div className="w-full max-w-screen-xl flex flex-col gap-2">
           <GameTable
             playersAtTable={playersAtTable}
@@ -214,7 +209,12 @@ const App = () => {
             players={players}
             nostrProfileData={nostrProfileData}
           />
-
+          <div className="">
+            <p className="italic text-gray-600">
+              Hint: For demo play of auto-generated games, open two clients and
+              choose one of the provided IDs for each player.
+            </p>
+          </div>
           <Players
             setActivePlayerId={setActivePlayerId}
             sendMessage={handleSendMessage}

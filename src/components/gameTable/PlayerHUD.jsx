@@ -18,8 +18,11 @@ const PlayerHUD = ({
   onClick,
   seatIndex,
   seatCount,
+  currentBet,
+  isDealer,
+  gameState,
 }) => {
-  const [isDealer, setIsDealer] = useState(true);
+  //const [isDealer, setIsDealer] = useState(true);
 
   const profilePic =
     playerObj?.picture ||
@@ -50,7 +53,7 @@ const PlayerHUD = ({
         <div
           style={{
             position: "absolute",
-            top: "-50%", // position above HUD
+            top: "-34%", // position above HUD
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
@@ -58,16 +61,19 @@ const PlayerHUD = ({
             zIndex: 0,
           }}
         >
-          <img
+          {gameState.playerHands[playerId]?.map((card, i) => (
+            <img key={i} src={card.src} alt={card.id} style={{ width: 40 }} />
+          ))}
+          {/* <img
             src={CARD_BACK_URL}
             alt="Card"
-            style={{ width: "30px", height: "auto" }}
+            style={{ width: "clamp(20px, 6vw, 40px)", height: "auto" }}
           />
           <img
             src={CARD_BACK_URL}
             alt="Card"
-            style={{ width: "30px", height: "auto" }}
-          />
+            style={{ width: "clamp(20px, 6vw, 40px)", height: "auto" }}
+          /> */}
         </div>
       )}
 
@@ -94,7 +100,7 @@ const PlayerHUD = ({
         {/* Left: Avatar */}
         <div
           style={{
-            width: "25%",
+            width: "30%",
             aspectRatio: "1 / 1",
             borderRadius: "50%",
             overflow: "hidden",
@@ -174,12 +180,13 @@ const PlayerHUD = ({
                 D
               </div>
             )}
-
-            <PlayerBets
-              seatIndex={seatIndex}
-              totalSeats={seatCount}
-              amount={100}
-            />
+            {currentBet > 0 && (
+              <PlayerBets
+                seatIndex={seatIndex}
+                totalSeats={seatCount}
+                amount={currentBet}
+              />
+            )}
           </div>
         </div>
       </div>
