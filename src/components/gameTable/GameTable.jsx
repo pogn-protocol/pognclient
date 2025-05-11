@@ -2,14 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./gameTable.css";
 import PlayerHUD from "./PlayerHUD";
-import {
-  getBlindIndexes,
-  getFirstToActIndex,
-  getTurnPlayer,
-  getNextTurnIndex,
-  isRoundOver,
-  getNextStreet,
-} from "./pokerUtils";
+import { getTurnPlayer, getNextTurnIndex, getNextStreet } from "./pokerUtils";
 import Ranker from "handranker";
 
 const CONFIG = {
@@ -24,13 +17,11 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const [playersAtTable, setPlayersAtTable] = useState([]);
   const tableRef = useRef(null);
   const [tableSize, setTableSize] = useState({ width: 600, height: 300 });
-  const [faceUpCards, setFaceUpCards] = useState(() => getRandomCards());
   const minBet = 50;
   const smallBlind = 10;
   const [betAmount, setBetAmount] = useState(minBet);
   const [potTotal, setPotTotal] = useState(0);
   const [playerBets, setPlayerBets] = useState({});
-
   const [gameState, setGameState] = useState({
     dealerIndex: 0,
     currentTurnIndex: 3,
@@ -41,7 +32,24 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
     communityCards: [], // flop, turn, river
     playerHands: {}, // { playerId: [card1, card2] }
     deck: [], // current shuffled deck
+    blindsPosted: false,
   });
+  const [playerStacks, setPlayerStacks] = useState({});
+  const [betsTotal, setBetsTotal] = useState(0);
+  const betsTotalRef = useRef(0);
+
+  // Initialize stacks if not set
+  useEffect(() => {
+    setPlayerStacks((prev) => {
+      const updated = { ...prev };
+      for (const id of playersAtTable) {
+        if (id && !(id in updated)) {
+          updated[id] = 1000; // starting stack
+        }
+      }
+      return updated;
+    });
+  }, [playersAtTable]);
 
   function initializeDeck() {
     const suits = ["S", "H", "D", "C"];
@@ -97,59 +105,203 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
     const newHands = {};
     const activePlayers = playersAtTable.filter(Boolean);
 
-    // Deal 2 cards to each player
+    if (activePlayers.length < 2) return;
+
+    // Deal hands
     for (let id of activePlayers) {
       newHands[id] = [deck.pop(), deck.pop()];
     }
 
-    setGameState((prev) => {
-      const nextDealerIndex = (prev.dealerIndex + 1) % playersAtTable.length;
-      return {
-        ...prev,
-        dealerIndex: nextDealerIndex,
-        currentTurnIndex: getFirstToActIndex(
-          nextDealerIndex,
-          playersAtTable.length,
-          true
-        ),
-        deck,
-        communityCards: [],
-        playerHands: {}, // <- EMPTY for now
-        turnsInRound: [],
-        street: "preflop",
-        playerActions: {},
-      };
+    const nextDealerIndex = (gameState.dealerIndex + 1) % activePlayers.length;
+    const dealerIndex = nextDealerIndex;
+
+    // Determine blind positions based on player count
+    let sbIndex, bbIndex, firstToActIndex;
+    let sbId, bbId;
+    const sbAmount = 10;
+    const bbAmount = 20;
+    console.log("💡 DEALER:", dealerIndex, activePlayers[dealerIndex]);
+    console.log(
+      "💡 FIRST TO ACT:",
+      firstToActIndex,
+      activePlayers[firstToActIndex]
+    );
+    console.log("💡 ACTIVE PLAYERS:", activePlayers);
+    if (activePlayers.length === 2) {
+      // Heads-up: dealer is SB, other player is BB
+      sbIndex = dealerIndex;
+      bbIndex = (dealerIndex + 1) % activePlayers.length;
+      // In heads-up, SB acts first preflop
+      firstToActIndex = sbIndex;
+    } else if (activePlayers.length === 3) {
+      // 3-handed game: SB left of dealer, BB left of SB
+      sbIndex = (dealerIndex + 1) % activePlayers.length;
+      bbIndex = (dealerIndex + 2) % activePlayers.length;
+      // In 3-handed, dealer/button acts first preflop
+      firstToActIndex = dealerIndex;
+    } else {
+      // 4+ players: SB left of dealer, BB left of SB
+      sbIndex = (dealerIndex + 1) % activePlayers.length;
+      bbIndex = (dealerIndex + 2) % activePlayers.length;
+      // UTG (Under the Gun) - first position after BB acts first preflop
+      firstToActIndex = (dealerIndex + 3) % activePlayers.length;
+    }
+    console.log("💡 DEALER:", dealerIndex, activePlayers[dealerIndex]);
+    console.log(
+      "💡 FIRST TO ACT:",
+      firstToActIndex,
+      activePlayers[firstToActIndex]
+    );
+    console.log("💡 ACTIVE PLAYERS:", activePlayers);
+    sbId = activePlayers[sbIndex];
+    bbId = activePlayers[bbIndex];
+    console.log("💡 SB:", sbId);
+    console.log("💡 BB:", bbId);
+    // Deduct blinds from stacks
+    setPlayerStacks((prev) => ({
+      ...prev,
+      [sbId]: Math.max(0, (prev[sbId] || 0) - sbAmount),
+      [bbId]: Math.max(0, (prev[bbId] || 0) - bbAmount),
+    }));
+
+    // Record blind bets
+    setPlayerBets({
+      [sbId]: sbAmount,
+      [bbId]: bbAmount,
     });
 
+    // Set initial pot
+    setPotTotal(sbAmount + bbAmount);
+
+    // Track blind actions
+    const playerActions = {
+      [sbId]: { action: "blind", amount: sbAmount },
+      [bbId]: { action: "blind", amount: bbAmount },
+    };
+
+    // Update game state
+    setGameState((prev) => ({
+      ...prev,
+      dealerIndex,
+      currentTurnIndex: firstToActIndex,
+      deck,
+      communityCards: [],
+      playerHands: {}, // fill after
+      turnsInRound: [sbId, bbId],
+      street: "preflop",
+      playerActions,
+      blindsPosted: true,
+    }));
+
+    // Add slight delay before dealing cards to players
     setTimeout(() => {
       setGameState((prev) => ({
         ...prev,
-        playerHands: newHands, // <- delayed
+        playerHands: newHands,
       }));
     }, 0);
   }
 
-  const botId = "pokerBot";
+  // function startNewHand() {
+  //   const deck = initializeDeck();
+  //   const newHands = {};
+  //   const activePlayers = playersAtTable.filter(Boolean);
 
-  // Always return a deduplicated list including the bot only once
+  //   if (activePlayers.length < 2) return;
+
+  //   for (let id of activePlayers) {
+  //     newHands[id] = [deck.pop(), deck.pop()];
+  //   }
+
+  //   const nextDealerIndex = (gameState.dealerIndex + 1) % playersAtTable.length;
+
+  //   let sbIndex, bbIndex;
+  //   // if (activePlayers.length === 2) {
+  //   //   sbIndex = nextDealerIndex;
+  //   //   bbIndex = (nextDealerIndex + 1) % playersAtTable.length;
+  //   // } else {
+  //   //   sbIndex = (nextDealerIndex + 1) % playersAtTable.length;
+  //   //   bbIndex = (nextDealerIndex + 2) % playersAtTable.length;
+  //   // }
+  //   if (activePlayers.length === 2) {
+  //     sbIndex = nextDealerIndex;
+  //     bbIndex = (nextDealerIndex + 1) % playersAtTable.length;
+  //   } else {
+  //     sbIndex = nextDealerIndex; // dealer = SB
+  //     bbIndex = (nextDealerIndex + 1) % playersAtTable.length;
+  //   }
+
+  //   const sbId = playersAtTable[sbIndex];
+  //   const bbId = playersAtTable[bbIndex];
+  //   const sbAmount = 10;
+  //   const bbAmount = 20;
+
+  //   // Deduct from stacks and set bets
+  //   setPlayerStacks((prev) => ({
+  //     ...prev,
+  //     [sbId]: Math.max(0, (prev[sbId] || 0) - sbAmount),
+  //     [bbId]: Math.max(0, (prev[bbId] || 0) - bbAmount),
+  //   }));
+
+  //   setPlayerBets({
+  //     [sbId]: sbAmount,
+  //     [bbId]: bbAmount,
+  //   });
+
+  //   setPotTotal(sbAmount + bbAmount);
+
+  //   setGameState((prev) => ({
+  //     ...prev,
+  //     dealerIndex: nextDealerIndex,
+  //     currentTurnIndex: (bbIndex + 1) % playersAtTable.length,
+  //     deck,
+  //     communityCards: [],
+  //     playerHands: {}, // filled next
+  //     turnsInRound: [sbId, bbId],
+  //     street: "preflop",
+  //     playerActions: {
+  //       [sbId]: { action: "blind", amount: sbAmount },
+  //       [bbId]: { action: "blind", amount: bbAmount },
+  //     },
+  //     blindsPosted: true,
+  //   }));
+
+  //   setTimeout(() => {
+  //     setGameState((prev) => ({
+  //       ...prev,
+  //       playerHands: newHands,
+  //     }));
+  //   }, 0);
+  // }
+
+  const botId = "pokerBot";
+  const secondBotId = "pokerBot2";
+
   const allPlayers = useMemo(() => {
-    const botPlayer = { id: botId, name: "Bot" };
-    const uniquePlayers = [...players.filter((p) => p.id !== botId), botPlayer];
-    return uniquePlayers;
+    const bot1 = { id: botId, name: "Bot" };
+    const bot2 = { id: secondBotId, name: "Bot 2" };
+    const filtered = players.filter(
+      (p) => p.id !== botId && p.id !== secondBotId
+    );
+    return [...filtered, bot1, bot2];
   }, [players]);
 
   useEffect(() => {
-    const validPlayers = playersAtTable.filter(Boolean); // remove null/undefined
-    const unique = Array.from(new Set(validPlayers)); // dedupe
-    const trimmed = unique.slice(0, seatCount); // trim to seat count
+    const validPlayers = playersAtTable.filter(Boolean);
+    const unique = Array.from(new Set(validPlayers)).slice(0, seatCount);
 
-    // Add bot if not included and room
-    if (!trimmed.includes(botId) && trimmed.length < seatCount) {
-      trimmed.push(botId);
+    const botIds = ["pokerBot", "pokerBot2"];
+    const updated = [...unique];
+
+    for (const botId of botIds) {
+      if (!updated.includes(botId) && updated.length < seatCount) {
+        updated.push(botId);
+      }
     }
 
-    setPlayersAtTable(trimmed);
+    setPlayersAtTable(updated);
   }, [seatCount]);
+
   useEffect(() => {
     const updateSize = () => {
       if (tableRef.current) {
@@ -200,53 +352,6 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const seatOffsetX = radiusX * CONFIG.seatPaddingRatio;
   const seatOffsetY = radiusY * CONFIG.seatPaddingRatio;
 
-  function getRandomCards() {
-    const suits = ["S", "H", "D", "C"];
-    const values = [
-      "A",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
-      "10",
-      "J",
-      "Q",
-      "K",
-    ];
-    const deck = [];
-    for (let s of suits) {
-      for (let v of values) {
-        const code = (v === "10" ? "0" : v) + s;
-        deck.push({
-          id: v + s,
-          src: `https://deckofcardsapi.com/static/img/${code}.png`,
-          alt: `${v} of ${s}`,
-          value: v,
-          suit: s,
-        });
-      }
-    }
-
-    // for (let s of suits)
-    //   for (let v of values)
-    //     deck.push({
-    //       id: v + s,
-    //       src: `https://deckofcardsapi.com/static/img/${v + s}.png`,
-    //       alt: `${v} of ${s}`,
-    //     });
-
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-
-    return deck.slice(0, 5);
-  }
-
   const handleSliderChange = (e) => {
     setBetAmount(Number(e.target.value));
   };
@@ -255,84 +360,93 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
     setBetAmount(Number(e.target.value));
   };
 
+  const activePlayers = playersAtTable.filter(Boolean);
   const currentTurnPlayerId = getTurnPlayer(
-    playersAtTable,
+    activePlayers,
     gameState.currentTurnIndex
   );
+
   const dealerId = playersAtTable[gameState.dealerIndex];
-  const firstToActIndex = getFirstToActIndex(
-    gameState.dealerIndex,
-    playersAtTable.length,
-    gameState.isPreflop
-  );
 
   useEffect(() => {
-    const botId = "pokerBot";
     setPlayersAtTable((prev) => {
-      // ✅ Don't add bot if already present
-      if (prev.includes(botId)) return prev;
-
-      // ✅ Only add bot if there's room
-      const emptyIndex = prev.findIndex((id) => id === null);
-      if (emptyIndex === -1) return prev;
-
       const updated = [...prev];
-      updated[emptyIndex] = botId;
 
-      // Optional: remove trailing nulls (fixes rendering weirdness)
-      const cleaned = updated.slice(0, seatCount);
+      const ids = new Set(updated);
+      if (!ids.has(botId)) {
+        const emptyIndex = updated.findIndex((id) => !id);
+        if (emptyIndex !== -1) updated[emptyIndex] = botId;
+      }
 
-      return cleaned;
+      if (!ids.has(secondBotId)) {
+        const emptyIndex = updated.findIndex((id) => !id);
+        if (emptyIndex !== -1) updated[emptyIndex] = secondBotId;
+      }
+
+      return updated.slice(0, seatCount);
     });
   }, []);
 
-  const botActedRef = useRef(false);
+  const botActedRef = useRef({});
+
+  const botIds = [botId, secondBotId];
 
   useEffect(() => {
-    const currentTurnPlayer = getTurnPlayer(
-      playersAtTable,
+    const activePlayers = playersAtTable.filter(Boolean);
+    if (activePlayers.length < 3) return;
+
+    const currentTurnPlayerId = getTurnPlayer(
+      activePlayers,
       gameState.currentTurnIndex
     );
 
-    const activePlayers = playersAtTable.filter(Boolean);
-    if (activePlayers.length < 2) return; // ⛔️ not enough players, don't act
+    console.log("BOT TURN CHECK", {
+      currentTurnIndex: gameState.currentTurnIndex,
+      currentTurnPlayerId,
+      dealerId: activePlayers[gameState.dealerIndex],
+      activePlayers,
+    });
 
     if (
-      currentTurnPlayer === botId &&
-      playersAtTable.includes(botId) &&
-      !botActedRef.current
+      botIds.includes(currentTurnPlayerId) &&
+      !botActedRef.current[currentTurnPlayerId]
     ) {
-      botActedRef.current = true;
+      botActedRef.current[currentTurnPlayerId] = true;
 
       const botBet = smallBlind;
 
       setTimeout(() => {
-        setPlayerBets((prev) => {
-          const newBets = {
-            ...prev,
-            [botId]: (prev[botId] || 0) + betAmount,
-          };
-          const newTotal = Object.values(newBets).reduce(
-            (sum, val) => sum + val,
-            0
-          );
-          setPotTotal(newTotal); // 💥 update pot now
-          return newBets;
-        });
+        setPlayerBets((prev) => ({
+          ...prev,
+          [currentTurnPlayerId]: (prev[currentTurnPlayerId] || 0) + botBet,
+        }));
+
+        setPotTotal((prev) => prev + botBet);
+
+        setPlayerStacks((prev) => ({
+          ...prev,
+          [currentTurnPlayerId]: Math.max(
+            0,
+            (prev[currentTurnPlayerId] || 0) - botBet
+          ),
+        }));
 
         setGameState((prev) => {
+          const activePlayers = playersAtTable.filter(Boolean);
           const nextIndex = getNextTurnIndex(
             prev.currentTurnIndex,
-            playersAtTable
+            activePlayers
           );
-          const updatedTurns = [...prev.turnsInRound, botId];
-
+          const updatedTurns = [...prev.turnsInRound, currentTurnPlayerId];
           const uniqueTurns = new Set(updatedTurns);
           const isRoundComplete = uniqueTurns.size === activePlayers.length;
+
           if (isRoundComplete) {
             setTimeout(() => {
-              setPlayerBets({}); // 🔥 clear bets after delay
-            }, 1000); // 1 second delay before clearing chips
+              setPotTotal((prevPot) => prevPot + betsTotalRef.current);
+              setBetsTotal(0);
+              setPlayerBets({});
+            }, 1000);
           }
 
           return {
@@ -342,7 +456,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
             street: isRoundComplete ? getNextStreet(prev.street) : prev.street,
             playerActions: {
               ...prev.playerActions,
-              [botId]: {
+              [currentTurnPlayerId]: {
                 action: "bet",
                 amount: botBet,
               },
@@ -352,15 +466,14 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       }, 1000);
     }
 
-    if (currentTurnPlayer !== botId) {
-      botActedRef.current = false;
+    if (!botIds.includes(currentTurnPlayerId)) {
+      botIds.forEach((id) => (botActedRef.current[id] = false));
     }
   }, [gameState, playersAtTable]);
 
   useEffect(() => {
     const activePlayers = playersAtTable.filter(Boolean);
-    console.log("activePlayers ", activePlayers);
-    if (activePlayers.length === 2 && gameState.deck.length === 0) {
+    if (activePlayers.length >= 3 && gameState.deck.length === 0) {
       startNewHand();
     }
   }, [playersAtTable, gameState.deck.length]);
@@ -418,6 +531,10 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       const result = Ranker.orderHands(hands, board);
       const flat = result.flat();
       const winner = flat[0];
+      const payout = potTotal;
+      console.log("🏆 Winner:", winner.id);
+      console.log("💰 Payout:", payout);
+      console.log("🧾 Stacks before:", playerStacks);
 
       setGameState((prev) => ({
         ...prev,
@@ -426,6 +543,14 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       }));
 
       setTimeout(() => {
+        setPlayerStacks((prev) => {
+          const updated = {
+            ...prev,
+            [winner.id]: (prev[winner.id] || 0) + payout,
+          };
+          console.log("✅ New stacks:", updated);
+          return updated;
+        });
         setGameState((prev) => ({
           ...prev,
           communityCards: [],
@@ -444,138 +569,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       }, 2000);
     }
   }, [gameState.street]);
-  // useEffect(() => {
-  //   if (gameState.street === "flop" && gameState.communityCards.length === 0) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: prev.deck.slice(0, 3),
-  //         deck: prev.deck.slice(3),
-  //       }));
-  //     }, 0);
-  //   } else if (
-  //     gameState.street === "turn" &&
-  //     gameState.communityCards.length === 3
-  //   ) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: [...prev.communityCards, prev.deck[0]],
-  //         deck: prev.deck.slice(1),
-  //       }));
-  //     }, 0);
-  //   } else if (
-  //     gameState.street === "river" &&
-  //     gameState.communityCards.length === 4
-  //   ) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: [...prev.communityCards, prev.deck[0]],
-  //         deck: prev.deck.slice(1),
-  //       }));
-  //     }, 0);
-  //   } else if (
-  //     gameState.street === "showdown" &&
-  //     gameState.communityCards.length === 5
-  //   ) {
-  //     const results = [];
 
-  //     for (const [playerId, hand] of Object.entries(gameState.playerHands)) {
-  //       const cards = [...hand, ...gameState.communityCards];
-  //       const code = (v) => (v === "10" ? "T" : v);
-  //       const handStrs = cards.map((c) => code(c.value) + c.suit);
-  //       const evalResult = PokerEvaluator.evalHand(handStrs);
-  //       results.push({
-  //         playerId,
-  //         handName: evalResult.handName,
-  //         handRank: evalResult.handRank,
-  //       });
-  //     }
-
-  //     const winner = results.reduce(
-  //       (best, r) => (r.handRank > best.handRank ? r : best),
-  //       results[0]
-  //     );
-
-  //     setGameState((prev) => ({
-  //       ...prev,
-  //       showdownResults: results,
-  //       showdownWinner: winner.playerId,
-  //     }));
-
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: [],
-  //         playerHands: {},
-  //         turnsInRound: [],
-  //         playerActions: {},
-  //         showdownResults: [],
-  //         showdownWinner: null,
-  //         street: "reset",
-  //       }));
-  //       setPlayerBets({});
-  //       setPotTotal(0);
-  //       setTimeout(() => {
-  //         startNewHand();
-  //       }, 500);
-  //     }, 2000);
-  //   }
-  // }, [gameState.street]);
-  // useEffect(() => {
-  //   if (gameState.street === "flop" && gameState.communityCards.length === 0) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: prev.deck.slice(0, 3),
-  //         deck: prev.deck.slice(3),
-  //       }));
-  //     }, 0);
-  //   } else if (
-  //     gameState.street === "turn" &&
-  //     gameState.communityCards.length === 3
-  //   ) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: [...prev.communityCards, prev.deck[0]],
-  //         deck: prev.deck.slice(1),
-  //       }));
-  //     }, 0);
-  //   } else if (
-  //     gameState.street === "river" &&
-  //     gameState.communityCards.length === 4
-  //   ) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: [...prev.communityCards, prev.deck[0]],
-  //         deck: prev.deck.slice(1),
-  //       }));
-  //     }, 0);
-  //   } else if (
-  //     gameState.street === "showdown" &&
-  //     gameState.communityCards.length === 5
-  //   ) {
-  //     setTimeout(() => {
-  //       setGameState((prev) => ({
-  //         ...prev,
-  //         communityCards: [],
-  //         playerHands: {},
-  //         turnsInRound: [],
-  //         playerActions: {},
-  //         street: "reset",
-  //       }));
-  //       setPlayerBets({});
-  //       setPotTotal(0);
-
-  //       setTimeout(() => {
-  //         startNewHand();
-  //       }, 500);
-  //     }, 1200);
-  //   }
-  // }, [gameState.street]);
   const getPlayerHandRank = () => {
     const playerHand = gameState.playerHands[activePlayerId] || [];
     const board = gameState.communityCards || [];
@@ -599,6 +593,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
       return null;
     }
   };
+  const isPlayersTurn = currentTurnPlayerId === activePlayerId;
 
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
   console.log("activePlayerId ", activePlayerId);
@@ -814,6 +809,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                   }}
                   gameState={gameState}
                   isCurrentTurn={playerId === currentTurnPlayerId}
+                  stack={playerStacks[playerId] || 0}
                 />
               );
             })}
@@ -821,8 +817,15 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
 
         {playersAtTable.includes(activePlayerId) && (
           <div className="w-50 d-flex mt-5 flex-column justify-content-end">
+            {getPlayerHandRank() && (
+              <div className="text-center my-3">
+                <span className="badge bg-success">
+                  You have: {getPlayerHandRank()}
+                </span>
+              </div>
+            )}
             {/* Bet Input with +/- Buttons */}
-            <div className="w-100 mb-2 d-flex align-items-center gap-2">
+            {/* <div className="w-100 mb-2 d-flex align-items-center gap-2">
               <button
                 type="button"
                 className="btn btn-outline-secondary"
@@ -850,17 +853,53 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
               >
                 +
               </button>
+            </div> */}
+            <div
+              className="w-100 mb-2 d-flex align-items-center gap-2"
+              style={{
+                pointerEvents:
+                  currentTurnPlayerId !== activePlayerId ? "none" : "auto",
+                opacity: currentTurnPlayerId !== activePlayerId ? 0.5 : 1,
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.max(minBet, prev - smallBlind))
+                }
+              >
+                –
+              </button>
+              <input
+                type="number"
+                className="form-control"
+                min={minBet}
+                max={playerStacks[activePlayerId] || minBet}
+                step={smallBlind}
+                value={betAmount}
+                onChange={handleInputChange}
+              />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.min(1000, prev + smallBlind))
+                }
+              >
+                +
+              </button>
             </div>
 
-            {getPlayerHandRank() && (
-              <div className="text-center my-3">
-                <span className="badge bg-success">{getPlayerHandRank()}</span>
-              </div>
-            )}
             <div
               className="btn-group mb-2 w-100 gap-2"
               role="group"
               aria-label="Action Buttons"
+              style={{
+                pointerEvents:
+                  currentTurnPlayerId !== activePlayerId ? "none" : "auto",
+                opacity: currentTurnPlayerId !== activePlayerId ? 0.5 : 1,
+              }}
             >
               <button type="button" className="btn btn-secondary">
                 Fold
@@ -868,7 +907,6 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
               <button type="button" className="btn btn-secondary">
                 Check
               </button>
-              {/* Bet Button */}
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -878,34 +916,38 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                       ...prev,
                       [activePlayerId]: (prev[activePlayerId] || 0) + betAmount,
                     };
-                    const newTotal = Object.values(newBets).reduce(
-                      (sum, val) => sum + val,
-                      0
-                    );
-                    setPotTotal(newTotal); // 💥 update pot now
                     return newBets;
                   });
 
-                  // setPlayerBets((prev) => ({
-                  //   ...prev,
-                  //   [activePlayerId]: betAmount,
-                  // }));
+                  setPotTotal((prev) => prev + betAmount); // 💰 add bet to pot immediately
+
+                  setPlayerStacks((prev) => ({
+                    ...prev,
+                    [activePlayerId]: Math.max(
+                      0,
+                      (prev[activePlayerId] || 0) - betAmount
+                    ),
+                  }));
+
                   setGameState((prev) => {
+                    const activePlayers = playersAtTable.filter(Boolean);
                     const nextIndex = getNextTurnIndex(
                       prev.currentTurnIndex,
-                      playersAtTable
+                      activePlayers
                     );
                     const updatedTurns = [...prev.turnsInRound, activePlayerId];
-
-                    const activePlayers = playersAtTable.filter(Boolean);
                     const uniqueTurns = new Set(updatedTurns);
                     const isRoundComplete =
                       uniqueTurns.size === activePlayers.length;
 
                     if (isRoundComplete) {
                       setTimeout(() => {
-                        setPlayerBets({}); // 🔥 clear bets after delay
-                      }, 1000); // 1 second delay before clearing chips
+                        setPotTotal(
+                          (prevPot) => prevPot + betsTotalRef.current
+                        );
+                        setBetsTotal(0);
+                        setPlayerBets({});
+                      }, 1000);
                     }
 
                     return {
@@ -924,6 +966,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                       },
                     };
                   });
+
                   setTimeout(() => {
                     setGameState((prev) => ({ ...prev }));
                   }, 0);
@@ -939,7 +982,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                 type="range"
                 className="form-range"
                 min={minBet}
-                max={1000}
+                max={playerStacks[activePlayerId] || minBet}
                 step={smallBlind}
                 value={betAmount}
                 onChange={handleSliderChange}

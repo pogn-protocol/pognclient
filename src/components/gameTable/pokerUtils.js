@@ -18,22 +18,15 @@ export function getFirstToActIndex(
   }
 }
 
-export function getTurnPlayer(playersAtTable, startIndex) {
-  const total = playersAtTable.length;
-  for (let i = 0; i < total; i++) {
-    const idx = (startIndex + i) % total;
-    if (playersAtTable[idx]) return playersAtTable[idx];
-  }
-  return null;
+export function getTurnPlayer(playersAtTable, index) {
+  const activePlayers = playersAtTable.filter(Boolean);
+  return activePlayers[index % activePlayers.length];
 }
 
 export function getNextTurnIndex(currentIndex, playersAtTable) {
-  const total = playersAtTable.length;
-  for (let i = 1; i <= total; i++) {
-    const idx = (currentIndex + i) % total;
-    if (playersAtTable[idx]) return idx;
-  }
-  return currentIndex; // fallback
+  const activePlayers = playersAtTable.filter(Boolean);
+  const nextIndex = (currentIndex + 1) % activePlayers.length;
+  return nextIndex;
 }
 
 export function isRoundOver(playerActions, playersAtTable) {

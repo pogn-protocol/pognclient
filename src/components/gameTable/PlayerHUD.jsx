@@ -22,6 +22,7 @@ const PlayerHUD = ({
   isDealer,
   gameState,
   isCurrentTurn,
+  stack,
 }) => {
   //const [isDealer, setIsDealer] = useState(true);
 
@@ -155,7 +156,7 @@ const PlayerHUD = ({
               alignItems: "center",
             }}
           >
-            {playerId && (
+            {playerId && typeof stack === "number" && (
               <span
                 style={{
                   fontSize: "clamp(0.5rem, 1vw, 1rem)",
@@ -163,7 +164,7 @@ const PlayerHUD = ({
                   fontWeight: "bold",
                 }}
               >
-                5,000
+                ${stack}
               </span>
             )}
 
