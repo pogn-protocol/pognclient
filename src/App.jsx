@@ -208,6 +208,9 @@ const App = () => {
             activePlayerId={activePlayerId}
             players={players}
             nostrProfileData={nostrProfileData}
+            sendMessage={handleSendMessage}
+            setAddRelayConnections={setAddRelayConnections}
+            messages={Object.values(messages).flat() || []}
           />
           <div className="">
             <p className="italic text-gray-600">

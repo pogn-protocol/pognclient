@@ -4,6 +4,7 @@ import "./gameTable.css";
 import PlayerHUD from "./PlayerHUD";
 import { getTurnPlayer, getNextTurnIndex, getNextStreet } from "./pokerUtils";
 import Ranker from "handranker";
+import ChatWindow from "./ChatWindow";
 
 const CONFIG = {
   seatCountMin: 2,
@@ -12,7 +13,13 @@ const CONFIG = {
   tableRatio: 2 / 1,
 };
 
-const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
+const GameTable = ({
+  activePlayerId,
+  players = [],
+  nostrProfileData,
+  sendMessage,
+  messages,
+}) => {
   const [seatCount, setSeatCount] = useState(6);
   const [playersAtTable, setPlayersAtTable] = useState([]);
   const tableRef = useRef(null);
@@ -278,29 +285,29 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
   const secondBotId = "pokerBot2";
 
   const allPlayers = useMemo(() => {
-    const bot1 = { id: botId, name: "Bot" };
-    const bot2 = { id: secondBotId, name: "Bot 2" };
+    const bot1 = { id: "pokerBot", name: "Bot" };
+    const bot2 = { id: "pokerBot2", name: "Bot 2" };
     const filtered = players.filter(
-      (p) => p.id !== botId && p.id !== secondBotId
+      (p) => p.id !== "pokerBot" && p.id !== "pokerBot2"
     );
     return [...filtered, bot1, bot2];
   }, [players]);
 
-  useEffect(() => {
-    const validPlayers = playersAtTable.filter(Boolean);
-    const unique = Array.from(new Set(validPlayers)).slice(0, seatCount);
+  // useEffect(() => {
+  //   const validPlayers = playersAtTable.filter(Boolean);
+  //   const unique = Array.from(new Set(validPlayers)).slice(0, seatCount);
 
-    const botIds = ["pokerBot", "pokerBot2"];
-    const updated = [...unique];
+  //   const botIds = ["pokerBot", "pokerBot2"];
+  //   const updated = [...unique];
 
-    for (const botId of botIds) {
-      if (!updated.includes(botId) && updated.length < seatCount) {
-        updated.push(botId);
-      }
-    }
+  //   for (const botId of botIds) {
+  //     if (!updated.includes(botId) && updated.length < seatCount) {
+  //       updated.push(botId);
+  //     }
+  //   }
 
-    setPlayersAtTable(updated);
-  }, [seatCount]);
+  //   setPlayersAtTable(updated);
+  // }, [seatCount]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -328,20 +335,39 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
     });
   };
 
-  const handleSitInternal = (idx) => {
-    setPlayersAtTable((prev) => {
-      if (prev.includes(activePlayerId)) return prev;
-      const updated = [...prev];
-      updated[idx] = activePlayerId;
-      return updated;
+  const handleSitInternal = (seatIndex) => {
+    if (!activePlayerId) return;
+
+    sendMessage("lobby1", {
+      relayId: "lobby1",
+      payload: {
+        type: "displayGame",
+        action: "sit",
+        playerId: activePlayerId,
+        seatIndex,
+      },
     });
   };
 
+  // const handleSitInternal = (idx) => {
+  //   setPlayersAtTable((prev) => {
+  //     if (prev.includes(activePlayerId)) return prev;
+  //     const updated = [...prev];
+  //     updated[idx] = activePlayerId;
+  //     return updated;
+  //   });
+  // };
   const handleLeaveTable = () => {
     if (!activePlayerId) return;
-    setPlayersAtTable((prev) =>
-      prev.map((id) => (id === activePlayerId ? null : id))
-    );
+
+    sendMessage("lobby1", {
+      relayId: "lobby1",
+      payload: {
+        type: "displayGame",
+        action: "leave",
+        playerId: activePlayerId,
+      },
+    });
   };
 
   const { width, height } = tableSize;
@@ -368,108 +394,108 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
 
   const dealerId = playersAtTable[gameState.dealerIndex];
 
-  useEffect(() => {
-    setPlayersAtTable((prev) => {
-      const updated = [...prev];
+  // useEffect(() => {
+  //   setPlayersAtTable((prev) => {
+  //     const updated = [...prev];
 
-      const ids = new Set(updated);
-      if (!ids.has(botId)) {
-        const emptyIndex = updated.findIndex((id) => !id);
-        if (emptyIndex !== -1) updated[emptyIndex] = botId;
-      }
+  //     const ids = new Set(updated);
+  //     if (!ids.has(botId)) {
+  //       const emptyIndex = updated.findIndex((id) => !id);
+  //       if (emptyIndex !== -1) updated[emptyIndex] = botId;
+  //     }
 
-      if (!ids.has(secondBotId)) {
-        const emptyIndex = updated.findIndex((id) => !id);
-        if (emptyIndex !== -1) updated[emptyIndex] = secondBotId;
-      }
+  //     if (!ids.has(secondBotId)) {
+  //       const emptyIndex = updated.findIndex((id) => !id);
+  //       if (emptyIndex !== -1) updated[emptyIndex] = secondBotId;
+  //     }
 
-      return updated.slice(0, seatCount);
-    });
-  }, []);
+  //     return updated.slice(0, seatCount);
+  //   });
+  // }, []);
 
   const botActedRef = useRef({});
 
   const botIds = [botId, secondBotId];
 
-  useEffect(() => {
-    const activePlayers = playersAtTable.filter(Boolean);
-    if (activePlayers.length < 3) return;
+  // useEffect(() => {
+  //   const activePlayers = playersAtTable.filter(Boolean);
+  //   if (activePlayers.length < 3) return;
 
-    const currentTurnPlayerId = getTurnPlayer(
-      activePlayers,
-      gameState.currentTurnIndex
-    );
+  //   const currentTurnPlayerId = getTurnPlayer(
+  //     activePlayers,
+  //     gameState.currentTurnIndex
+  //   );
 
-    console.log("BOT TURN CHECK", {
-      currentTurnIndex: gameState.currentTurnIndex,
-      currentTurnPlayerId,
-      dealerId: activePlayers[gameState.dealerIndex],
-      activePlayers,
-    });
+  //   console.log("BOT TURN CHECK", {
+  //     currentTurnIndex: gameState.currentTurnIndex,
+  //     currentTurnPlayerId,
+  //     dealerId: activePlayers[gameState.dealerIndex],
+  //     activePlayers,
+  //   });
 
-    if (
-      botIds.includes(currentTurnPlayerId) &&
-      !botActedRef.current[currentTurnPlayerId]
-    ) {
-      botActedRef.current[currentTurnPlayerId] = true;
+  //   if (
+  //     botIds.includes(currentTurnPlayerId) &&
+  //     !botActedRef.current[currentTurnPlayerId]
+  //   ) {
+  //     botActedRef.current[currentTurnPlayerId] = true;
 
-      const botBet = smallBlind;
+  //     const botBet = smallBlind;
 
-      setTimeout(() => {
-        setPlayerBets((prev) => ({
-          ...prev,
-          [currentTurnPlayerId]: (prev[currentTurnPlayerId] || 0) + botBet,
-        }));
+  //     setTimeout(() => {
+  //       setPlayerBets((prev) => ({
+  //         ...prev,
+  //         [currentTurnPlayerId]: (prev[currentTurnPlayerId] || 0) + botBet,
+  //       }));
 
-        setPotTotal((prev) => prev + botBet);
+  //       setPotTotal((prev) => prev + botBet);
 
-        setPlayerStacks((prev) => ({
-          ...prev,
-          [currentTurnPlayerId]: Math.max(
-            0,
-            (prev[currentTurnPlayerId] || 0) - botBet
-          ),
-        }));
+  //       setPlayerStacks((prev) => ({
+  //         ...prev,
+  //         [currentTurnPlayerId]: Math.max(
+  //           0,
+  //           (prev[currentTurnPlayerId] || 0) - botBet
+  //         ),
+  //       }));
 
-        setGameState((prev) => {
-          const activePlayers = playersAtTable.filter(Boolean);
-          const nextIndex = getNextTurnIndex(
-            prev.currentTurnIndex,
-            activePlayers
-          );
-          const updatedTurns = [...prev.turnsInRound, currentTurnPlayerId];
-          const uniqueTurns = new Set(updatedTurns);
-          const isRoundComplete = uniqueTurns.size === activePlayers.length;
+  //       setGameState((prev) => {
+  //         const activePlayers = playersAtTable.filter(Boolean);
+  //         const nextIndex = getNextTurnIndex(
+  //           prev.currentTurnIndex,
+  //           activePlayers
+  //         );
+  //         const updatedTurns = [...prev.turnsInRound, currentTurnPlayerId];
+  //         const uniqueTurns = new Set(updatedTurns);
+  //         const isRoundComplete = uniqueTurns.size === activePlayers.length;
 
-          if (isRoundComplete) {
-            setTimeout(() => {
-              setPotTotal((prevPot) => prevPot + betsTotalRef.current);
-              setBetsTotal(0);
-              setPlayerBets({});
-            }, 1000);
-          }
+  //         if (isRoundComplete) {
+  //           setTimeout(() => {
+  //             setPotTotal((prevPot) => prevPot + betsTotalRef.current);
+  //             setBetsTotal(0);
+  //             setPlayerBets({});
+  //           }, 1000);
+  //         }
 
-          return {
-            ...prev,
-            currentTurnIndex: nextIndex,
-            turnsInRound: isRoundComplete ? [] : updatedTurns,
-            street: isRoundComplete ? getNextStreet(prev.street) : prev.street,
-            playerActions: {
-              ...prev.playerActions,
-              [currentTurnPlayerId]: {
-                action: "bet",
-                amount: botBet,
-              },
-            },
-          };
-        });
-      }, 1000);
-    }
+  //         return {
+  //           ...prev,
+  //           currentTurnIndex: nextIndex,
+  //           turnsInRound: isRoundComplete ? [] : updatedTurns,
+  //           street: isRoundComplete ? getNextStreet(prev.street) : prev.street,
+  //           playerActions: {
+  //             ...prev.playerActions,
+  //             [currentTurnPlayerId]: {
+  //               action: "bet",
+  //               amount: botBet,
+  //             },
+  //           },
+  //         };
+  //       });
+  //     }, 1000);
+  //   }
 
-    if (!botIds.includes(currentTurnPlayerId)) {
-      botIds.forEach((id) => (botActedRef.current[id] = false));
-    }
-  }, [gameState, playersAtTable]);
+  //   if (!botIds.includes(currentTurnPlayerId)) {
+  //     botIds.forEach((id) => (botActedRef.current[id] = false));
+  //   }
+  // }, [gameState, playersAtTable]);
 
   useEffect(() => {
     const activePlayers = playersAtTable.filter(Boolean);
@@ -594,14 +620,94 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
     }
   };
   const isPlayersTurn = currentTurnPlayerId === activePlayerId;
+  const chatMessages = Object.values(messages)
+    .flat()
+    .filter((m) => m?.payload?.type === "chat")
+    .map((m) => ({
+      id: m.payload?.senderId || "unknown",
+      text: m.payload?.text || "",
+    }));
+
+  const displayGameMessages = Object.values(messages)
+    .flat()
+    .filter((m) => m?.payload?.type === "displayGame")
+    .map((m) => ({
+      ...m.payload,
+    }));
+
+  console.log("displayGameMessages ", displayGameMessages);
 
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
   console.log("activePlayerId ", activePlayerId);
   console.log("playersAtTable ", playersAtTable);
   console.log("gameState ", gameState);
   console.log("playerBets ", playerBets);
+
+  useEffect(() => {
+    const msg = displayGameMessages[displayGameMessages.length - 1];
+    if (!msg) return;
+
+    const { action, playerId, seatIndex, playersAtTable: incomingSeats } = msg;
+
+    if (Array.isArray(incomingSeats)) {
+      const updatedSeats = Array(seatCount).fill(null);
+
+      for (const entry of incomingSeats) {
+        const { playerId, seatIndex } = entry;
+        if (
+          typeof seatIndex === "number" &&
+          seatIndex < seatCount &&
+          playerId
+        ) {
+          updatedSeats[seatIndex] = playerId;
+        }
+      }
+
+      setPlayersAtTable((prev) => {
+        const same =
+          prev.length === updatedSeats.length &&
+          prev.every((val, i) => val === updatedSeats[i]);
+
+        return same ? prev : updatedSeats;
+      });
+      return;
+    }
+
+    if (action === "sit" && typeof seatIndex === "number") {
+      setPlayersAtTable((prev) => {
+        if (prev.includes(playerId)) return prev;
+        const updated = [...prev];
+        updated[seatIndex] = playerId;
+        return updated;
+      });
+    }
+
+    if (action === "leave") {
+      setPlayersAtTable((prev) =>
+        prev.map((id) => (id === playerId ? null : id))
+      );
+    }
+  }, [displayGameMessages]);
+
   return (
-    <div className="container-fluid py-4">
+    <div className="container-fluidpy-4">
+      <div className="d-flex justify-content-center mt-4">
+        <ChatWindow
+          playerId={activePlayerId}
+          sendMessage={(msg) =>
+            sendMessage("lobby1", {
+              relayId: "lobby1",
+              payload: {
+                type: "chat",
+                senderId: activePlayerId,
+                text: msg.text,
+                action: "chat",
+              },
+            })
+          }
+          messages={chatMessages}
+        />
+      </div>
       {gameState.showdownWinner && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center"
@@ -629,8 +735,8 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
         </div>
       )}
 
-      <div className="d-flex flex-column align-items-center">
-        <h2 className="text-center mb-3">Demo Table</h2>
+      <div className="d-flex flex-column align-items-center mt-5">
+        <h2 className="text-center mb-3 mt-3">Demo Table</h2>
 
         <div className="mb-2 w-100" style={{ maxWidth: "300px" }}>
           <label htmlFor="seatCount" className="form-label">
@@ -655,6 +761,13 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
         <button
           type="button"
           className="btn btn-secondary mb-2"
+          onClick={handleLeaveTable}
+        >
+          Leave Table
+        </button>
+        {/* <button
+          type="button"
+          className="btn btn-secondary mb-2"
           onClick={() => {
             setPlayersAtTable((prev) =>
               prev.map((id) => (id === activePlayerId ? null : id))
@@ -667,7 +780,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
           }}
         >
           Leave Table
-        </button>
+        </button> */}
 
         <div
           className="mb-5"
@@ -854,7 +967,7 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                 +
               </button>
             </div> */}
-            <div
+            {/* <div
               className="w-100 mb-2 d-flex align-items-center gap-2"
               style={{
                 pointerEvents:
@@ -971,6 +1084,98 @@ const GameTable = ({ activePlayerId, players = [], nostrProfileData }) => {
                     setGameState((prev) => ({ ...prev }));
                   }, 0);
                 }}
+              >
+                Bet {betAmount}
+              </button>
+            </div> */}
+            <div className="w-100 mb-2 d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.max(minBet, prev - smallBlind))
+                }
+                disabled={currentTurnPlayerId !== activePlayerId}
+              >
+                –
+              </button>
+              <input
+                type="number"
+                className="form-control"
+                min={minBet}
+                max={playerStacks[activePlayerId] || minBet}
+                step={smallBlind}
+                value={betAmount}
+                onChange={handleInputChange}
+                disabled={currentTurnPlayerId !== activePlayerId}
+              />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.min(1000, prev + smallBlind))
+                }
+                disabled={currentTurnPlayerId !== activePlayerId}
+              >
+                +
+              </button>
+            </div>
+            <div
+              className="btn-group mb-2 w-100 gap-2"
+              role="group"
+              aria-label="Action Buttons"
+            >
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={currentTurnPlayerId !== activePlayerId}
+                onClick={() =>
+                  sendMessage("lobby1", {
+                    relayId: "lobby1",
+                    payload: {
+                      type: "displayGame",
+                      action: "fold",
+                      playerId: activePlayerId,
+                    },
+                  })
+                }
+              >
+                Fold
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={currentTurnPlayerId !== activePlayerId}
+                onClick={() =>
+                  sendMessage("lobby1", {
+                    relayId: "lobby1",
+                    payload: {
+                      type: "displayGame",
+                      action: "check",
+                      playerId: activePlayerId,
+                    },
+                  })
+                }
+              >
+                Check
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={currentTurnPlayerId !== activePlayerId}
+                onClick={() =>
+                  sendMessage("lobby1", {
+                    relayId: "lobby1",
+                    payload: {
+                      type: "displayGame",
+                      action: "bet",
+                      playerId: activePlayerId,
+                      amount: betAmount,
+                    },
+                  })
+                }
               >
                 Bet {betAmount}
               </button>
