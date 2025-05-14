@@ -5,6 +5,7 @@ import PlayerHUD from "./PlayerHUD";
 import { getTurnPlayer, getNextTurnIndex, getNextStreet } from "./pokerUtils";
 import Ranker from "handranker";
 import ChatWindow from "./ChatWindow";
+import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
 
 const CONFIG = {
   seatCountMin: 2,
@@ -15,7 +16,9 @@ const CONFIG = {
 
 const GameTable = ({
   activePlayerId,
+  setActivePlayerId,
   players = [],
+  setPlayers,
   nostrProfileData,
   sendMessage,
   messages,
@@ -201,12 +204,20 @@ const GameTable = ({
     }));
 
     // Add slight delay before dealing cards to players
-    setTimeout(() => {
-      setGameState((prev) => ({
-        ...prev,
-        playerHands: newHands,
-      }));
-    }, 0);
+    // setTimeout(() => {
+    //   setGameState((prev) => ({
+    //     ...prev,
+    //     playerHands: newHands,
+    //   }));
+    // }, 0);
+    sendMessage("displayGameRelay", {
+      relayId: "displayGameRelay",
+      payload: {
+        type: "displayGame",
+        action: "startHand",
+        playerId: activePlayerId,
+      },
+    });
   }
 
   // function startNewHand() {
@@ -334,20 +345,73 @@ const GameTable = ({
       return updated;
     });
   };
+  const hasJoinedChatRef = useRef(false);
 
-  const handleSitInternal = (seatIndex) => {
-    if (!activePlayerId) return;
+  const handleSitInternal = async (seatIndex) => {
+    let finalId;
 
-    sendMessage("lobby1", {
-      relayId: "lobby1",
-      payload: {
-        type: "displayGame",
-        action: "sit",
-        playerId: activePlayerId,
-        seatIndex,
-      },
-    });
+    if (!activePlayerId) {
+      // Generate a guest ID if user doesn't have one
+      const sk = generateSecretKey();
+      finalId = getPublicKey(sk);
+
+      // Update the players list with the new ID
+      setPlayers?.((prev) => [...prev, { id: finalId, pubkeySource: "guest" }]);
+
+      // Set active player ID
+      setActivePlayerId?.(finalId);
+
+      // Wait a short moment for React to process the state updates
+      await new Promise((res) => setTimeout(res, 5000));
+      // Then send the sit message
+      console.log("💥 SENDING FINAL ID:", finalId);
+
+      sendMessage("displayGameRelay", {
+        relayId: "displayGameRelay",
+        payload: {
+          type: "displayGame",
+          action: "sit",
+          playerId: finalId,
+          seatIndex,
+        },
+      });
+    } else {
+      // Then send the sit message
+      console.log("💥 SENDING FINAL ID:", finalId);
+
+      sendMessage("displayGameRelay", {
+        relayId: "displayGameRelay",
+        payload: {
+          type: "displayGame",
+          action: "sit",
+          playerId: activePlayerId,
+          seatIndex,
+        },
+      });
+    }
+
+    // First send the join message
   };
+
+  useEffect(() => {
+    if (
+      activePlayerId &&
+      playersAtTable.includes(activePlayerId) &&
+      !hasJoinedChatRef.current
+    ) {
+      hasJoinedChatRef.current = true;
+
+      sendMessage("displayGameRelay", {
+        relayId: "displayGameRelay",
+        payload: {
+          type: "chat",
+          action: "join",
+          playerId: activePlayerId,
+          text: `${activePlayerId.slice(0, 6)} joined chat.`,
+        },
+      });
+    }
+  }, [activePlayerId, playersAtTable]);
 
   // const handleSitInternal = (idx) => {
   //   setPlayersAtTable((prev) => {
@@ -360,8 +424,8 @@ const GameTable = ({
   const handleLeaveTable = () => {
     if (!activePlayerId) return;
 
-    sendMessage("lobby1", {
-      relayId: "lobby1",
+    sendMessage("displayGameRelay", {
+      relayId: "displayGameRelay",
       payload: {
         type: "displayGame",
         action: "leave",
@@ -393,109 +457,6 @@ const GameTable = ({
   );
 
   const dealerId = playersAtTable[gameState.dealerIndex];
-
-  // useEffect(() => {
-  //   setPlayersAtTable((prev) => {
-  //     const updated = [...prev];
-
-  //     const ids = new Set(updated);
-  //     if (!ids.has(botId)) {
-  //       const emptyIndex = updated.findIndex((id) => !id);
-  //       if (emptyIndex !== -1) updated[emptyIndex] = botId;
-  //     }
-
-  //     if (!ids.has(secondBotId)) {
-  //       const emptyIndex = updated.findIndex((id) => !id);
-  //       if (emptyIndex !== -1) updated[emptyIndex] = secondBotId;
-  //     }
-
-  //     return updated.slice(0, seatCount);
-  //   });
-  // }, []);
-
-  const botActedRef = useRef({});
-
-  const botIds = [botId, secondBotId];
-
-  // useEffect(() => {
-  //   const activePlayers = playersAtTable.filter(Boolean);
-  //   if (activePlayers.length < 3) return;
-
-  //   const currentTurnPlayerId = getTurnPlayer(
-  //     activePlayers,
-  //     gameState.currentTurnIndex
-  //   );
-
-  //   console.log("BOT TURN CHECK", {
-  //     currentTurnIndex: gameState.currentTurnIndex,
-  //     currentTurnPlayerId,
-  //     dealerId: activePlayers[gameState.dealerIndex],
-  //     activePlayers,
-  //   });
-
-  //   if (
-  //     botIds.includes(currentTurnPlayerId) &&
-  //     !botActedRef.current[currentTurnPlayerId]
-  //   ) {
-  //     botActedRef.current[currentTurnPlayerId] = true;
-
-  //     const botBet = smallBlind;
-
-  //     setTimeout(() => {
-  //       setPlayerBets((prev) => ({
-  //         ...prev,
-  //         [currentTurnPlayerId]: (prev[currentTurnPlayerId] || 0) + botBet,
-  //       }));
-
-  //       setPotTotal((prev) => prev + botBet);
-
-  //       setPlayerStacks((prev) => ({
-  //         ...prev,
-  //         [currentTurnPlayerId]: Math.max(
-  //           0,
-  //           (prev[currentTurnPlayerId] || 0) - botBet
-  //         ),
-  //       }));
-
-  //       setGameState((prev) => {
-  //         const activePlayers = playersAtTable.filter(Boolean);
-  //         const nextIndex = getNextTurnIndex(
-  //           prev.currentTurnIndex,
-  //           activePlayers
-  //         );
-  //         const updatedTurns = [...prev.turnsInRound, currentTurnPlayerId];
-  //         const uniqueTurns = new Set(updatedTurns);
-  //         const isRoundComplete = uniqueTurns.size === activePlayers.length;
-
-  //         if (isRoundComplete) {
-  //           setTimeout(() => {
-  //             setPotTotal((prevPot) => prevPot + betsTotalRef.current);
-  //             setBetsTotal(0);
-  //             setPlayerBets({});
-  //           }, 1000);
-  //         }
-
-  //         return {
-  //           ...prev,
-  //           currentTurnIndex: nextIndex,
-  //           turnsInRound: isRoundComplete ? [] : updatedTurns,
-  //           street: isRoundComplete ? getNextStreet(prev.street) : prev.street,
-  //           playerActions: {
-  //             ...prev.playerActions,
-  //             [currentTurnPlayerId]: {
-  //               action: "bet",
-  //               amount: botBet,
-  //             },
-  //           },
-  //         };
-  //       });
-  //     }, 1000);
-  //   }
-
-  //   if (!botIds.includes(currentTurnPlayerId)) {
-  //     botIds.forEach((id) => (botActedRef.current[id] = false));
-  //   }
-  // }, [gameState, playersAtTable]);
 
   useEffect(() => {
     const activePlayers = playersAtTable.filter(Boolean);
@@ -623,10 +584,13 @@ const GameTable = ({
   const chatMessages = Object.values(messages)
     .flat()
     .filter((m) => m?.payload?.type === "chat")
-    .map((m) => ({
-      id: m.payload?.senderId || "unknown",
-      text: m.payload?.text || "",
-    }));
+    .map((m) => {
+      const { playerId, action, text } = m.payload || {};
+      return {
+        id: action === "system" ? "system" : playerId || "unknown",
+        text: text || "",
+      };
+    });
 
   const displayGameMessages = Object.values(messages)
     .flat()
@@ -695,17 +659,19 @@ const GameTable = ({
         <ChatWindow
           playerId={activePlayerId}
           sendMessage={(msg) =>
-            sendMessage("lobby1", {
-              relayId: "lobby1",
+            sendMessage("chatRelay", {
+              relayId: "chatRelay",
               payload: {
                 type: "chat",
-                senderId: activePlayerId,
+                playerId: activePlayerId,
                 text: msg.text,
                 action: "chat",
               },
             })
           }
           messages={chatMessages}
+          setPlayers={setPlayers}
+          setActivePlayerId={setActivePlayerId}
         />
       </div>
       {gameState.showdownWinner && (
@@ -914,8 +880,9 @@ const GameTable = ({
                   }}
                   onClick={() => {
                     if (
-                      (!playerId || playerId === activePlayerId) &&
-                      activePlayerId
+                      !playerId ||
+                      playerId === activePlayerId ||
+                      !activePlayerId
                     ) {
                       handleSitInternal(idx);
                     }
@@ -1130,8 +1097,8 @@ const GameTable = ({
                 className="btn btn-secondary"
                 disabled={currentTurnPlayerId !== activePlayerId}
                 onClick={() =>
-                  sendMessage("lobby1", {
-                    relayId: "lobby1",
+                  sendMessage("displayGameRelay", {
+                    relayId: "displayGameRelay",
                     payload: {
                       type: "displayGame",
                       action: "fold",
@@ -1148,8 +1115,8 @@ const GameTable = ({
                 className="btn btn-secondary"
                 disabled={currentTurnPlayerId !== activePlayerId}
                 onClick={() =>
-                  sendMessage("lobby1", {
-                    relayId: "lobby1",
+                  sendMessage("displayGameRelay", {
+                    relayId: "displayGameRelay",
                     payload: {
                       type: "displayGame",
                       action: "check",
@@ -1166,8 +1133,8 @@ const GameTable = ({
                 className="btn btn-secondary"
                 disabled={currentTurnPlayerId !== activePlayerId}
                 onClick={() =>
-                  sendMessage("lobby1", {
-                    relayId: "lobby1",
+                  sendMessage("displayGameRelay", {
+                    relayId: "displayGameRelay",
                     payload: {
                       type: "displayGame",
                       action: "bet",

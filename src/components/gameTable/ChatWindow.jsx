@@ -1,24 +1,62 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
 
-const ChatWindow = ({ playerId, sendMessage, messages }) => {
+const ChatWindow = ({
+  playerId,
+  sendMessage,
+  messages,
+  setPlayers,
+  setActivePlayerId,
+}) => {
   const [joined, setJoined] = useState(false);
   const [input, setInput] = useState("");
+
+  const generatedIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!playerId && joined && !generatedIdRef.current) {
+      const sk = generateSecretKey();
+      const pk = getPublicKey(sk);
+      const newId = pk;
+      generatedIdRef.current = newId;
+      setPlayers?.((prev) =>
+        prev.some((p) => p.id === newId)
+          ? prev
+          : [...prev, { id: newId, pubkeySource: "guest" }]
+      );
+      setActivePlayerId?.(newId);
+    }
+  }, [joined, playerId]);
+
+  const idToUse = playerId || generatedIdRef.current;
 
   const handleJoin = () => {
     setJoined(true);
   };
 
   useEffect(() => {
-    if (joined) {
-      sendMessage({ id: "system", text: `${playerId} joined chat.` });
+    if (joined && idToUse) {
+      sendMessage({ id: "system", text: `${idToUse} joined chat.` });
     }
-  }, [joined]);
+  }, [joined, idToUse]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    sendMessage({ id: playerId, text: input });
+    if (!input.trim() || !idToUse) return;
+    sendMessage({ id: idToUse, text: input });
     setInput("");
   };
+
+  // useEffect(() => {
+  //   if (joined) {
+  //     sendMessage({ id: "system", text: `${playerId} joined chat.` });
+  //   }
+  // }, [joined]);
+
+  // const handleSend = () => {
+  //   if (!input.trim()) return;
+  //   sendMessage({ id: playerId, text: input });
+  //   setInput("");
+  // };
 
   return (
     <div
@@ -37,7 +75,12 @@ const ChatWindow = ({ playerId, sendMessage, messages }) => {
       >
         {(messages || []).map((msg, i) => (
           <div key={i}>
-            <strong>{msg.id === playerId ? "You" : msg.id}</strong>: {msg.text}
+            {msg.id === "system" ? (
+              <em className="text-muted d-block text-center">{msg.text}</em>
+            ) : (
+              <strong>{msg.id === playerId ? "You" : msg.id}</strong> +
+              `: ${msg.text}`
+            )}
           </div>
         ))}
       </div>

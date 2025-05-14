@@ -32,8 +32,8 @@ export default function useMessages(
       }
 
       message.uuid = uuidv4();
-      message.relayId = id;
-      message.payload.playerId = playerId;
+      message.relayId ??= id;
+      message.payload.playerId ??= playerId;
 
       console.log(`🚀 Sending message to ${id}`, message);
       sendMessageToUrl(id, message);
@@ -76,7 +76,7 @@ export default function useMessages(
         return;
       }
       if (type === "lobby") {
-        if (action === "inviteVerified"|| action === "gameInviteError") {
+        if (action === "inviteVerified" || action === "gameInviteError") {
           console.log("Game inviteVerified ignored:", message.payload);
           return;
         }

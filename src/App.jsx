@@ -206,6 +206,8 @@ const App = () => {
             playersAtTable={playersAtTable}
             onSit={handleSit}
             activePlayerId={activePlayerId}
+            setActivePlayerId={setActivePlayerId}
+            setPlayers={setPlayers}
             players={players}
             nostrProfileData={nostrProfileData}
             sendMessage={handleSendMessage}
