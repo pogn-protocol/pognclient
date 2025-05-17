@@ -34,11 +34,11 @@ const ChatWindow = ({
     setJoined(true);
   };
 
-  useEffect(() => {
-    if (joined && idToUse) {
-      sendMessage({ id: "system", text: `${idToUse} joined chat.` });
-    }
-  }, [joined, idToUse]);
+  // useEffect(() => {
+  //   if (joined && idToUse) {
+  //     sendMessage({ id: "system", text: `${idToUse} joined chat.` });
+  //   }
+  // }, [joined, idToUse]);
 
   const handleSend = () => {
     if (!input.trim() || !idToUse) return;

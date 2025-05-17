@@ -210,8 +210,8 @@ const GameTable = ({
     //     playerHands: newHands,
     //   }));
     // }, 0);
-    sendMessage("displayGameRelay", {
-      relayId: "displayGameRelay",
+    sendMessage("displayGame", {
+      relayId: "displayGame",
       payload: {
         type: "displayGame",
         action: "startHand",
@@ -362,12 +362,11 @@ const GameTable = ({
       setActivePlayerId?.(finalId);
 
       // Wait a short moment for React to process the state updates
-      await new Promise((res) => setTimeout(res, 5000));
       // Then send the sit message
       console.log("💥 SENDING FINAL ID:", finalId);
 
-      sendMessage("displayGameRelay", {
-        relayId: "displayGameRelay",
+      sendMessage("displayGame", {
+        relayId: "displayGame",
         payload: {
           type: "displayGame",
           action: "sit",
@@ -379,8 +378,8 @@ const GameTable = ({
       // Then send the sit message
       console.log("💥 SENDING FINAL ID:", finalId);
 
-      sendMessage("displayGameRelay", {
-        relayId: "displayGameRelay",
+      sendMessage("displayGame", {
+        relayId: "displayGame",
         payload: {
           type: "displayGame",
           action: "sit",
@@ -394,23 +393,23 @@ const GameTable = ({
   };
 
   useEffect(() => {
-    if (
-      activePlayerId &&
-      playersAtTable.includes(activePlayerId) &&
-      !hasJoinedChatRef.current
-    ) {
-      hasJoinedChatRef.current = true;
+    console.log("💡 JOINING CHAT");
+    // if (!activePlayerId || hasJoinedChatRef.current) return;
 
-      sendMessage("displayGameRelay", {
-        relayId: "displayGameRelay",
-        payload: {
-          type: "chat",
-          action: "join",
-          playerId: activePlayerId,
-          text: `${activePlayerId.slice(0, 6)} joined chat.`,
-        },
-      });
-    }
+    // // Confirm the active player is seated
+    // const isSeated = playersAtTable.includes(activePlayerId);
+    // if (!isSeated) return;
+
+    // hasJoinedChatRef.current = true;
+
+    // sendMessage("chat", {
+    //   relayId: "chat",
+    //   payload: {
+    //     type: "chat",
+    //     action: "join",
+    //     playerId: activePlayerId,
+    //   },
+    // });
   }, [activePlayerId, playersAtTable]);
 
   // const handleSitInternal = (idx) => {
@@ -424,8 +423,8 @@ const GameTable = ({
   const handleLeaveTable = () => {
     if (!activePlayerId) return;
 
-    sendMessage("displayGameRelay", {
-      relayId: "displayGameRelay",
+    sendMessage("displayGame", {
+      relayId: "displayGame",
       payload: {
         type: "displayGame",
         action: "leave",
@@ -465,97 +464,128 @@ const GameTable = ({
     }
   }, [playersAtTable, gameState.deck.length]);
 
+  // useEffect(() => {
+  //   if (gameState.street === "flop" && gameState.communityCards.length === 0) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: prev.deck.slice(0, 3),
+  //         deck: prev.deck.slice(3),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "turn" &&
+  //     gameState.communityCards.length === 3
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [...prev.communityCards, prev.deck[0]],
+  //         deck: prev.deck.slice(1),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "river" &&
+  //     gameState.communityCards.length === 4
+  //   ) {
+  //     setTimeout(() => {
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [...prev.communityCards, prev.deck[0]],
+  //         deck: prev.deck.slice(1),
+  //       }));
+  //     }, 0);
+  //   } else if (
+  //     gameState.street === "showdown" &&
+  //     gameState.communityCards.length === 5
+  //   ) {
+  //     const board = gameState.communityCards.map((c) => {
+  //       const r = c.value === "0" ? "T" : c.value;
+  //       return r + c.suit.toLowerCase();
+  //     });
+
+  //     const hands = Object.entries(gameState.playerHands).map(
+  //       ([playerId, hand]) => ({
+  //         id: playerId,
+  //         cards: hand.map((c) => {
+  //           const r = c.value === "0" ? "T" : c.value;
+  //           return r + c.suit.toLowerCase();
+  //         }),
+  //       })
+  //     );
+
+  //     const result = Ranker.orderHands(hands, board);
+  //     const flat = result.flat();
+  //     const winner = flat[0];
+  //     const payout = potTotal;
+  //     console.log("🏆 Winner:", winner.id);
+  //     console.log("💰 Payout:", payout);
+  //     console.log("🧾 Stacks before:", playerStacks);
+
+  //     setGameState((prev) => ({
+  //       ...prev,
+  //       showdownResults: flat,
+  //       showdownWinner: winner.id,
+  //     }));
+
+  //     setTimeout(() => {
+  //       setPlayerStacks((prev) => {
+  //         const updated = {
+  //           ...prev,
+  //           [winner.id]: (prev[winner.id] || 0) + payout,
+  //         };
+  //         console.log("✅ New stacks:", updated);
+  //         return updated;
+  //       });
+  //       setGameState((prev) => ({
+  //         ...prev,
+  //         communityCards: [],
+  //         playerHands: {},
+  //         turnsInRound: [],
+  //         playerActions: {},
+  //         showdownResults: [],
+  //         showdownWinner: null,
+  //         street: "reset",
+  //       }));
+  //       setPlayerBets({});
+  //       setPotTotal(0);
+  //       setTimeout(() => {
+  //         startNewHand();
+  //       }, 500);
+  //     }, 2000);
+  //   }
+  // }, [gameState.street]);
   useEffect(() => {
-    if (gameState.street === "flop" && gameState.communityCards.length === 0) {
-      setTimeout(() => {
-        setGameState((prev) => ({
-          ...prev,
-          communityCards: prev.deck.slice(0, 3),
-          deck: prev.deck.slice(3),
-        }));
-      }, 0);
-    } else if (
-      gameState.street === "turn" &&
-      gameState.communityCards.length === 3
-    ) {
-      setTimeout(() => {
-        setGameState((prev) => ({
-          ...prev,
-          communityCards: [...prev.communityCards, prev.deck[0]],
-          deck: prev.deck.slice(1),
-        }));
-      }, 0);
-    } else if (
-      gameState.street === "river" &&
-      gameState.communityCards.length === 4
-    ) {
-      setTimeout(() => {
-        setGameState((prev) => ({
-          ...prev,
-          communityCards: [...prev.communityCards, prev.deck[0]],
-          deck: prev.deck.slice(1),
-        }));
-      }, 0);
-    } else if (
-      gameState.street === "showdown" &&
-      gameState.communityCards.length === 5
-    ) {
-      const board = gameState.communityCards.map((c) => {
-        const r = c.value === "0" ? "T" : c.value;
-        return r + c.suit.toLowerCase();
-      });
+    const { street, communityCards, deck } = gameState;
 
-      const hands = Object.entries(gameState.playerHands).map(
-        ([playerId, hand]) => ({
-          id: playerId,
-          cards: hand.map((c) => {
-            const r = c.value === "0" ? "T" : c.value;
-            return r + c.suit.toLowerCase();
-          }),
-        })
-      );
-
-      const result = Ranker.orderHands(hands, board);
-      const flat = result.flat();
-      const winner = flat[0];
-      const payout = potTotal;
-      console.log("🏆 Winner:", winner.id);
-      console.log("💰 Payout:", payout);
-      console.log("🧾 Stacks before:", playerStacks);
-
+    if (street === "flop" && communityCards.length === 0 && deck.length >= 3) {
       setGameState((prev) => ({
         ...prev,
-        showdownResults: flat,
-        showdownWinner: winner.id,
+        communityCards: deck.slice(0, 3),
+        deck: deck.slice(3),
       }));
-
-      setTimeout(() => {
-        setPlayerStacks((prev) => {
-          const updated = {
-            ...prev,
-            [winner.id]: (prev[winner.id] || 0) + payout,
-          };
-          console.log("✅ New stacks:", updated);
-          return updated;
-        });
-        setGameState((prev) => ({
-          ...prev,
-          communityCards: [],
-          playerHands: {},
-          turnsInRound: [],
-          playerActions: {},
-          showdownResults: [],
-          showdownWinner: null,
-          street: "reset",
-        }));
-        setPlayerBets({});
-        setPotTotal(0);
-        setTimeout(() => {
-          startNewHand();
-        }, 500);
-      }, 2000);
+    } else if (
+      street === "turn" &&
+      communityCards.length === 3 &&
+      deck.length >= 1
+    ) {
+      setGameState((prev) => ({
+        ...prev,
+        communityCards: [...communityCards, deck[0]],
+        deck: deck.slice(1),
+      }));
+    } else if (
+      street === "river" &&
+      communityCards.length === 4 &&
+      deck.length >= 1
+    ) {
+      setGameState((prev) => ({
+        ...prev,
+        communityCards: [...communityCards, deck[0]],
+        deck: deck.slice(1),
+      }));
     }
-  }, [gameState.street]);
+  }, [gameState.street, gameState.communityCards, gameState.deck]);
 
   const getPlayerHandRank = () => {
     const playerHand = gameState.playerHands[activePlayerId] || [];
@@ -598,6 +628,24 @@ const GameTable = ({
     .map((m) => ({
       ...m.payload,
     }));
+
+  useEffect(() => {
+    // const privateHandMsg = displayGameMessages.find(
+    //   (m) =>
+    //     m?.action === "privateHand" &&
+    //     m?.playerId === activePlayerId &&
+    //     Array.isArray(m?.hand)
+    // );
+    // if (privateHandMsg) {
+    //   setGameState((prev) => ({
+    //     ...prev,
+    //     playerHands: {
+    //       ...prev.playerHands,
+    //       [activePlayerId]: privateHandMsg.hand,
+    //     },
+    //   }));
+    // }
+  }, [displayGameMessages, activePlayerId]);
 
   console.log("displayGameMessages ", displayGameMessages);
 
@@ -659,8 +707,8 @@ const GameTable = ({
         <ChatWindow
           playerId={activePlayerId}
           sendMessage={(msg) =>
-            sendMessage("chatRelay", {
-              relayId: "chatRelay",
+            sendMessage("chat", {
+              relayId: "chat",
               payload: {
                 type: "chat",
                 playerId: activePlayerId,
@@ -1097,8 +1145,8 @@ const GameTable = ({
                 className="btn btn-secondary"
                 disabled={currentTurnPlayerId !== activePlayerId}
                 onClick={() =>
-                  sendMessage("displayGameRelay", {
-                    relayId: "displayGameRelay",
+                  sendMessage("displayGame", {
+                    relayId: "displayGame",
                     payload: {
                       type: "displayGame",
                       action: "fold",
@@ -1115,8 +1163,8 @@ const GameTable = ({
                 className="btn btn-secondary"
                 disabled={currentTurnPlayerId !== activePlayerId}
                 onClick={() =>
-                  sendMessage("displayGameRelay", {
-                    relayId: "displayGameRelay",
+                  sendMessage("displayGame", {
+                    relayId: "displayGame",
                     payload: {
                       type: "displayGame",
                       action: "check",
@@ -1133,8 +1181,8 @@ const GameTable = ({
                 className="btn btn-secondary"
                 disabled={currentTurnPlayerId !== activePlayerId}
                 onClick={() =>
-                  sendMessage("displayGameRelay", {
-                    relayId: "displayGameRelay",
+                  sendMessage("displayGame", {
+                    relayId: "displayGame",
                     payload: {
                       type: "displayGame",
                       action: "bet",
