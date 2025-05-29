@@ -44,6 +44,7 @@ const GameTable = ({
   });
   const [playerStacks, setPlayerStacks] = useState({});
   const hasJoinedChatRef = useRef(false);
+  const [winnerOverlayId, setWinnerOverlayId] = useState(null);
 
   // Initialize stacks if not set
   useEffect(() => {
@@ -202,9 +203,69 @@ const GameTable = ({
   }, [displayGameMessages, activePlayerId]);
 
   // Updated logic for processing display game messages
+  // useEffect(() => {
+  //   const msg = displayGameMessages[displayGameMessages.length - 1];
+  //   console.log("Processing displayGame message:", msg);
+  //   if (!msg) return;
+
+  //   const {
+  //     action,
+  //     playerId,
+  //     seatIndex,
+  //     playersAtTable: incomingSeats,
+  //     gameState: newGameState,
+  //   } = msg;
+
+  //   if (Array.isArray(incomingSeats)) {
+  //     const updatedSeats = Array(seatCount).fill(null);
+
+  //     for (const entry of incomingSeats) {
+  //       const { playerId, seatIndex } = entry;
+  //       if (
+  //         typeof seatIndex === "number" &&
+  //         seatIndex < seatCount &&
+  //         playerId
+  //       ) {
+  //         updatedSeats[seatIndex] = playerId;
+  //       }
+  //     }
+
+  //     setPlayersAtTable((prev) => {
+  //       const same =
+  //         prev.length === updatedSeats.length &&
+  //         prev.every((val, i) => val === updatedSeats[i]);
+
+  //       return same ? prev : updatedSeats;
+  //     });
+  //   }
+
+  //   if (newGameState?.players) {
+  //     const stackMap = {};
+  //     for (const [pid, pdata] of Object.entries(newGameState.players)) {
+  //       stackMap[pid] = pdata.stack;
+  //     }
+  //     setPlayerStacks(stackMap);
+  //     setGameState((prev) => ({ ...prev, ...newGameState }));
+  //   }
+
+  //   if (action === "sit" && typeof seatIndex === "number") {
+  //     setPlayersAtTable((prev) => {
+  //       if (prev.includes(playerId)) return prev;
+  //       const updated = [...prev];
+  //       updated[seatIndex] = playerId;
+  //       return updated;
+  //     });
+  //   }
+
+  //   if (action === "leave") {
+  //     setPlayersAtTable((prev) =>
+  //       prev.map((id) => (id === playerId ? null : id))
+  //     );
+  //   }
+  // }, [displayGameMessages, seatCount]);
+
   useEffect(() => {
     const msg = displayGameMessages[displayGameMessages.length - 1];
-    console.log("Processing displayGame message:", msg);
     if (!msg) return;
 
     const {
@@ -213,11 +274,12 @@ const GameTable = ({
       seatIndex,
       playersAtTable: incomingSeats,
       gameState: newGameState,
+      showdownWinner,
+      showdownResults,
     } = msg;
 
     if (Array.isArray(incomingSeats)) {
       const updatedSeats = Array(seatCount).fill(null);
-
       for (const entry of incomingSeats) {
         const { playerId, seatIndex } = entry;
         if (
@@ -233,7 +295,6 @@ const GameTable = ({
         const same =
           prev.length === updatedSeats.length &&
           prev.every((val, i) => val === updatedSeats[i]);
-
         return same ? prev : updatedSeats;
       });
     }
@@ -244,7 +305,13 @@ const GameTable = ({
         stackMap[pid] = pdata.stack;
       }
       setPlayerStacks(stackMap);
-      setGameState((prev) => ({ ...prev, ...newGameState }));
+
+      setGameState((prev) => ({
+        ...prev,
+        ...newGameState,
+        ...(showdownWinner && { showdownWinner }),
+        ...(showdownResults && { showdownResults }),
+      }));
     }
 
     if (action === "sit" && typeof seatIndex === "number") {
@@ -260,6 +327,14 @@ const GameTable = ({
       setPlayersAtTable((prev) =>
         prev.map((id) => (id === playerId ? null : id))
       );
+    }
+
+    if (msg.revealedHands) {
+      const parsed = {};
+      for (const { playerId, hand } of msg.revealedHands) {
+        parsed[playerId] = hand.map(parseCard); // your parseCard already works
+      }
+      setPlayerHands(parsed); // will be passed into PlayerHUD
     }
   }, [displayGameMessages, seatCount]);
 
@@ -371,44 +446,29 @@ const GameTable = ({
     }
   };
 
-  // const getPlayerHandRank = () => {
-  //   const board = gameState.communityCards || [];
-
-  //   if (holeCards.length < 2 || board.length + holeCards.length < 5)
-  //     return null;
-
-  //   const toRankerFormat = (card) => {
-  //     console.log("Converting card to Ranker format:", card);
-  //     if (!card || !card.value || !card.suit) return null;
-
-  //     const rank = card.value === "0" ? "T" : card.value;
-  //     const suit = card.suit.toLowerCase(); // Must be 'c', 'd', 'h', or 's'
-  //     return rank + suit;
-  //   };
-
-  //   // const toRankerFormat = (card) => {
-  //   //   if (!card || !card.value || !card.suit) return null;
-  //   //   const rank = card.value === "0" ? "T" : card.value;
-  //   //   const suit = card.suit.toLowerCase();
-  //   //   return rank + suit;
-  //   // };
-
-  //   const cards = [...holeCards, ...board].map(toRankerFormat);
-  //   console.log("Cards to rank:", cards);
-  //   try {
-  //     const result = Ranker.getHand(cards);
-  //     return result?.description || null;
-  //   } catch (err) {
-  //     console.warn("Ranker failed on cards:", cards, err);
-  //     return null;
-  //   }
-  // };
-
-  const isPlayersTurn = currentTurnPlayerId === activePlayerId;
   const chatMessages = Object.values(messages)
     .flat()
     .filter((m) => m?.payload?.type === "chat")
     .map((m) => m.payload);
+
+  const lastShowdownHandId = useRef(null);
+
+  useEffect(() => {
+    const { street, showdownWinner } = gameState;
+
+    if (street === "showdown" && showdownWinner) {
+      setWinnerOverlayId(showdownWinner);
+
+      const timeout = setTimeout(() => {
+        setWinnerOverlayId(null);
+      }, 3000);
+
+      return () => clearTimeout(timeout);
+    } else if (street !== "showdown") {
+      // Clear winner when not in showdown
+      setWinnerOverlayId(null);
+    }
+  }, [gameState.street, gameState.showdownWinner]);
 
   console.log("displayGameMessages ", displayGameMessages);
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
@@ -438,7 +498,7 @@ const GameTable = ({
           setActivePlayerId={setActivePlayerId}
         />
       </div>
-      {gameState.showdownWinner && (
+      {/* {gameState.showdownWinner && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center"
           style={{ zIndex: 9999 }}
@@ -463,10 +523,24 @@ const GameTable = ({
             </p>
           </div>
         </div>
-      )}
+      )} */}
 
       <div className="d-flex flex-column align-items-center mt-5">
         <h2 className="text-center mb-3 mt-3">Demo Table</h2>
+        {gameState.street === "showdown" && (
+          <div className="showdown-results text-center mb-4">
+            <h4 className="mb-2">🃏 Showdown Hands</h4>
+            {gameState.showdownResults?.map((res) => (
+              <div key={res.id}>
+                <strong>
+                  {allPlayers.find((p) => p.id === res.id)?.name ||
+                    res.id.slice(0, 6)}
+                </strong>
+                : {res.description}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mb-2 w-100" style={{ maxWidth: "300px" }}>
           <label htmlFor="seatCount" className="form-label">
@@ -488,22 +562,39 @@ const GameTable = ({
             ))}
           </select>
         </div>
-        <button
-          type="button"
-          className="btn btn-secondary mb-2"
-          onClick={handleLeaveTable}
-        >
-          Leave Table
-        </button>
-
+        <div className="d-flex gap-2 mb-2">
+          <button
+            type="button"
+            className="btn btn-secondary gap-2 "
+            onClick={handleLeaveTable}
+          >
+            Leave Table
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              sendMessage("displayGame", {
+                relayId: "displayGame",
+                payload: {
+                  type: "displayGame",
+                  action: "startHand",
+                  playerId: activePlayerId,
+                },
+              })
+            }
+          >
+            🔁 New Hand
+          </button>
+        </div>
         <div
-          className="mb-5"
+          className="d-flex flex-row gap-2 mb-5"
           style={{ minHeight: "150px", maxHeight: "300px", overflowY: "auto" }}
         >
           {currentTurnPlayerId && (
             <div className="mb-3 text-center">
               <span className="badge bg-info text-dark">
-                Turn:{" "}
+                Player Turn:{" "}
                 {allPlayers.find((p) => p.id === currentTurnPlayerId)?.name ||
                   currentTurnPlayerId.slice(0, 6)}
               </span>
@@ -521,6 +612,7 @@ const GameTable = ({
               </span>
             </div>
           )}
+          {/* Start New Hand Button */}
         </div>
 
         <div
@@ -629,6 +721,7 @@ const GameTable = ({
                   isCurrentTurn={playerId === currentTurnPlayerId}
                   stack={playerStacks[playerId] || 0}
                   holeCards={playerHands[playerId] || []}
+                  isWinner={playerId && playerId === winnerOverlayId}
                 />
               );
             })}

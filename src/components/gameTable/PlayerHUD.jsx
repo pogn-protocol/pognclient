@@ -24,6 +24,7 @@ const PlayerHUD = ({
   isCurrentTurn,
   stack,
   holeCards,
+  isWinner,
 }) => {
   //const [isDealer, setIsDealer] = useState(true);
 
@@ -198,6 +199,26 @@ const PlayerHUD = ({
           </div>
         </div>
       </div>
+
+      {isWinner && (
+        <div
+          style={{
+            position: "absolute",
+            top: "0%",
+            left: "0%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#ffc107",
+            color: "#212529",
+            padding: "4px 12px",
+            borderRadius: "0.4rem",
+            fontWeight: "bold",
+            boxShadow: "0 0 4px rgba(0,0,0,0.5)",
+            zIndex: 999,
+          }}
+        >
+          🏆 Winner!
+        </div>
+      )}
     </div>
   );
 };
