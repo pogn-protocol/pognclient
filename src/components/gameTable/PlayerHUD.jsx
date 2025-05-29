@@ -23,6 +23,7 @@ const PlayerHUD = ({
   gameState,
   isCurrentTurn,
   stack,
+  holeCards,
 }) => {
   //const [isDealer, setIsDealer] = useState(true);
 
@@ -63,19 +64,24 @@ const PlayerHUD = ({
             zIndex: 0,
           }}
         >
-          {gameState.playerHands[playerId]?.map((card, i) => (
-            <img key={i} src={card.src} alt={card.id} style={{ width: 40 }} />
-          ))}
-          {/* <img
-            src={CARD_BACK_URL}
-            alt="Card"
-            style={{ width: "clamp(20px, 6vw, 40px)", height: "auto" }}
-          />
-          <img
-            src={CARD_BACK_URL}
-            alt="Card"
-            style={{ width: "clamp(20px, 6vw, 40px)", height: "auto" }}
-          /> */}
+          {Array.isArray(holeCards) &&
+            holeCards.map((card, i) =>
+              card ? (
+                <img
+                  key={i}
+                  src={card.src}
+                  alt={card.id}
+                  style={{ width: 40 }}
+                />
+              ) : (
+                <img
+                  key={i}
+                  src={CARD_BACK_URL}
+                  alt="Card Back"
+                  style={{ width: 40 }}
+                />
+              )
+            )}
         </div>
       )}
 

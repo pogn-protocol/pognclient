@@ -20,7 +20,7 @@ const ChatWindow = ({
       const newId = pk;
       generatedIdRef.current = newId;
       setPlayers?.((prev) =>
-        prev.some((p) => p.id === newId)
+        prev.some((p) => p.playerId === newId)
           ? prev
           : [...prev, { id: newId, pubkeySource: "guest" }]
       );
@@ -33,30 +33,24 @@ const ChatWindow = ({
   const handleJoin = () => {
     setJoined(true);
   };
+  useEffect(() => {
+    if (!messages || joined || !playerId) return;
+    console.log("messages", messages);
+    const latestJoin = messages.find(
+      (m) => m?.action === "joined" && m?.playerId === playerId
+    );
 
-  // useEffect(() => {
-  //   if (joined && idToUse) {
-  //     sendMessage({ id: "system", text: `${idToUse} joined chat.` });
-  //   }
-  // }, [joined, idToUse]);
+    if (latestJoin) {
+      console.log("joined");
+      setJoined(true);
+    }
+  }, [messages, playerId, joined]);
 
   const handleSend = () => {
     if (!input.trim() || !idToUse) return;
     sendMessage({ id: idToUse, text: input });
     setInput("");
   };
-
-  // useEffect(() => {
-  //   if (joined) {
-  //     sendMessage({ id: "system", text: `${playerId} joined chat.` });
-  //   }
-  // }, [joined]);
-
-  // const handleSend = () => {
-  //   if (!input.trim()) return;
-  //   sendMessage({ id: playerId, text: input });
-  //   setInput("");
-  // };
 
   return (
     <div
@@ -75,11 +69,15 @@ const ChatWindow = ({
       >
         {(messages || []).map((msg, i) => (
           <div key={i}>
-            {msg.id === "system" ? (
+            {msg.system ? (
               <em className="text-muted d-block text-center">{msg.text}</em>
             ) : (
-              <strong>{msg.id === playerId ? "You" : msg.id}</strong> +
-              `: ${msg.text}`
+              <span>
+                <strong>
+                  {msg?.playerId === playerId ? "You" : msg?.playerId}
+                </strong>
+                : {msg?.text}
+              </span>
             )}
           </div>
         ))}

@@ -30,19 +30,22 @@ const GameTable = ({
   const minBet = 50;
   const smallBlind = 10;
   const [betAmount, setBetAmount] = useState(minBet);
+  const [potTotal, setPotTotal] = useState(0);
   const [playerBets, setPlayerBets] = useState({});
-  const [holeCards, setHoleCards] = useState([]);
-  const [playerHands, setPlayerHands] = useState({});
   const [gameState, setGameState] = useState({
     dealerIndex: 0,
-    currentTurnIndex: 0,
-    street: "preflop",
-    turnsInRound: [],
+    currentTurnIndex: 3,
+    isPreflop: true,
+    street: "preflop", // NEW
+    turnsInRound: [], // NEW: array of playerIds who have acted
     playerActions: {},
-    communityCards: [],
+    communityCards: [], // flop, turn, river
+    //playerHands: {}, // { playerId: [card1, card2] }
+    // deck: [], // current shuffled deck
     blindsPosted: false,
   });
   const [playerStacks, setPlayerStacks] = useState({});
+  const [holeCards, setHoleCards] = useState([]);
   const hasJoinedChatRef = useRef(false);
 
   // Initialize stacks if not set
@@ -80,15 +83,6 @@ const GameTable = ({
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
-
-  const displayGameMessages = useMemo(
-    () =>
-      Object.values(messages)
-        .flat()
-        .filter((m) => m?.payload?.type === "displayGame")
-        .map((m) => m.payload),
-    [messages]
-  );
 
   const handleSeatChange = (e) => {
     const newCount = parseInt(e.target.value);
@@ -179,41 +173,139 @@ const GameTable = ({
     });
   };
 
-  // Updated logic for handling private hands
+  const { width, height } = tableSize;
+  const cx = width / 2;
+  const cy = height / 2;
+  const radiusX = width / 2;
+  const radiusY = height / 2;
+  const seatOffsetX = radiusX * CONFIG.seatPaddingRatio;
+  const seatOffsetY = radiusY * CONFIG.seatPaddingRatio;
+
+  const handleSliderChange = (e) => {
+    setBetAmount(Number(e.target.value));
+  };
+
+  const handleInputChange = (e) => {
+    setBetAmount(Number(e.target.value));
+  };
+
+  const activePlayers = playersAtTable.filter(Boolean);
+  const currentTurnPlayerId = getTurnPlayer(
+    activePlayers,
+    gameState.currentTurnIndex
+  );
+
+  const dealerId = playersAtTable[gameState.dealerIndex];
+
+  useEffect(() => {
+    const { street, communityCards, deck } = gameState;
+
+    if (street === "flop" && communityCards.length === 0 && deck.length >= 3) {
+      setGameState((prev) => ({
+        ...prev,
+        communityCards: deck.slice(0, 3),
+        deck: deck.slice(3),
+      }));
+    } else if (
+      street === "turn" &&
+      communityCards.length === 3 &&
+      deck.length >= 1
+    ) {
+      setGameState((prev) => ({
+        ...prev,
+        communityCards: [...communityCards, deck[0]],
+        deck: deck.slice(1),
+      }));
+    } else if (
+      street === "river" &&
+      communityCards.length === 4 &&
+      deck.length >= 1
+    ) {
+      setGameState((prev) => ({
+        ...prev,
+        communityCards: [...communityCards, deck[0]],
+        deck: deck.slice(1),
+      }));
+    }
+  }, [gameState.street, gameState.communityCards, gameState.deck]);
+
+  const getPlayerHandRank = () => {
+    //const playerHand = gameState.playerHands[activePlayerId] || [];
+    const board = gameState.communityCards || [];
+
+    if (holeCards.length < 2 || board.length + holeCards.length < 5)
+      return null;
+
+    const toRankerFormat = (card) => {
+      const rank = card.value === "0" ? "T" : card.value;
+      const suit = card.suit.toLowerCase(); // S, H, D, C → s, h, d, c
+      return rank + suit;
+    };
+
+    const cards = [...holeCards, ...board].map(toRankerFormat);
+
+    try {
+      const result = Ranker.getHand(cards);
+      return result?.description || null;
+    } catch (err) {
+      console.warn("Ranker failed on cards:", cards, err);
+      return null;
+    }
+  };
+  const isPlayersTurn = currentTurnPlayerId === activePlayerId;
+  const chatMessages = Object.values(messages)
+    .flat()
+    .filter((m) => m?.payload?.type === "chat")
+    .map((m) => m.payload);
+
+  const displayGameMessages = Object.values(messages)
+    .flat()
+    .filter((m) => m?.payload?.type === "displayGame")
+    .map((m) => ({
+      ...m.payload,
+    }));
+
   useEffect(() => {
     if (!activePlayerId) return;
-    console.log("Display game messages:", displayGameMessages);
-    const privateHandMsg = [...displayGameMessages]
-      .reverse()
-      .find(
-        (m) => m?.action === "privateHand" && m?.playerId === activePlayerId
-      );
+    if (holeCards.length > 0) return;
+
+    const privateHandMsg = displayGameMessages.find(
+      (m) =>
+        m?.action === "privateHand" &&
+        m?.playerId === activePlayerId &&
+        Array.isArray(m?.hand)
+    );
 
     if (privateHandMsg) {
-      const parsedHands = {};
-      for (const [pid, hand] of Object.entries(privateHandMsg.hands)) {
-        parsedHands[pid] = Array.isArray(hand)
-          ? hand.map((card) => (card ? parseCard(card) : null))
-          : [];
-      }
-      setPlayerHands(parsedHands);
-      setHoleCards(parsedHands[activePlayerId] || []);
+      const parsed = privateHandMsg.hand.map(parseCard);
+      setHoleCards(parsed);
     }
-  }, [displayGameMessages, activePlayerId]);
+  }, [displayGameMessages, activePlayerId, holeCards]);
 
-  // Updated logic for processing display game messages
+  function parseCard(code) {
+    const value = code[0] === "T" ? "0" : code[0]; // "T" is stored as "0" in deckofcardsapi
+    const suit = code[1].toUpperCase(); // e.g. "d" => "D"
+    return {
+      id: code,
+      src: `https://deckofcardsapi.com/static/img/${value}${suit}.png`,
+      value,
+      suit,
+    };
+  }
+
+  console.log("displayGameMessages ", displayGameMessages);
+
+  console.log("currentTurnPlayerId ", currentTurnPlayerId);
+  console.log("activePlayerId ", activePlayerId);
+  console.log("playersAtTable ", playersAtTable);
+  console.log("gameState ", gameState);
+  console.log("playerBets ", playerBets);
+
   useEffect(() => {
     const msg = displayGameMessages[displayGameMessages.length - 1];
-    console.log("Processing displayGame message:", msg);
     if (!msg) return;
 
-    const {
-      action,
-      playerId,
-      seatIndex,
-      playersAtTable: incomingSeats,
-      gameState: newGameState,
-    } = msg;
+    const { action, playerId, seatIndex, playersAtTable: incomingSeats } = msg;
 
     if (Array.isArray(incomingSeats)) {
       const updatedSeats = Array(seatCount).fill(null);
@@ -236,15 +328,7 @@ const GameTable = ({
 
         return same ? prev : updatedSeats;
       });
-    }
-
-    if (newGameState?.players) {
-      const stackMap = {};
-      for (const [pid, pdata] of Object.entries(newGameState.players)) {
-        stackMap[pid] = pdata.stack;
-      }
-      setPlayerStacks(stackMap);
-      setGameState((prev) => ({ ...prev, ...newGameState }));
+      return;
     }
 
     if (action === "sit" && typeof seatIndex === "number") {
@@ -261,161 +345,7 @@ const GameTable = ({
         prev.map((id) => (id === playerId ? null : id))
       );
     }
-  }, [displayGameMessages, seatCount]);
-
-  function parseCard(code) {
-    const value = code[0] === "T" ? "0" : code[0]; // "T" is stored as "0" in deckofcardsapi
-    const suit = code[1].toUpperCase(); // e.g. "d" => "D"
-    return {
-      id: code,
-      src: `https://deckofcardsapi.com/static/img/${value}${suit}.png`,
-      value,
-      suit,
-    };
-  }
-
-  const { width, height } = tableSize;
-  const cx = width / 2;
-  const cy = height / 2;
-  const radiusX = width / 2;
-  const radiusY = height / 2;
-  const seatOffsetX = radiusX * CONFIG.seatPaddingRatio;
-  const seatOffsetY = radiusY * CONFIG.seatPaddingRatio;
-
-  const handleSliderChange = (e) => {
-    setBetAmount(Number(e.target.value));
-  };
-
-  const handleInputChange = (e) => {
-    setBetAmount(Number(e.target.value));
-  };
-
-  const currentTurnPlayerId = gameState.turn;
-
-  const dealerId = playersAtTable[gameState.dealerIndex];
-
-  useEffect(() => {
-    const { street, communityCards, deck } = gameState;
-
-    if (street === "flop" && communityCards.length === 0 && deck?.length >= 3) {
-      setGameState((prev) => ({
-        ...prev,
-        communityCards: deck.slice(0, 3),
-        deck: deck.slice(3),
-      }));
-    } else if (
-      street === "turn" &&
-      communityCards.length === 3 &&
-      deck?.length >= 1
-    ) {
-      setGameState((prev) => ({
-        ...prev,
-        communityCards: [...communityCards, deck[0]],
-        deck: deck.slice(1),
-      }));
-    } else if (
-      street === "river" &&
-      communityCards.length === 4 &&
-      deck?.length >= 1
-    ) {
-      setGameState((prev) => ({
-        ...prev,
-        communityCards: [...communityCards, deck[0]],
-        deck: deck.slice(1),
-      }));
-    }
-  }, [gameState.street, gameState.communityCards, gameState.deck]);
-
-  const getPlayerHandRank = () => {
-    console.log("🔍 Calculating player hand rank...");
-    const board = gameState.communityCards || [];
-    console.log("🃏 Board cards:", board);
-    console.log("🕳️ Hole cards:", holeCards);
-
-    const toRankerFormat = (card) => {
-      if (!card) return null;
-
-      if (typeof card === "string") {
-        console.log("Board card as string:", card);
-        return card.length === 2 ? card : null;
-      }
-
-      if (!card.value || !card.suit) return null;
-
-      const rank = card.value === "0" ? "T" : card.value.toUpperCase();
-      const suit = card.suit.toLowerCase(); // must be 'c', 'd', 'h', or 's'
-      const formatted = rank + suit;
-      console.log("Formatted hole card:", formatted);
-      return formatted;
-    };
-
-    const cards = [...holeCards, ...board].map(toRankerFormat).filter(Boolean);
-
-    console.log("🎯 Cards to rank:", cards);
-
-    if (cards.length < 5) {
-      console.warn(
-        "❗ Not enough cards to evaluate. Needed 5, got:",
-        cards.length
-      );
-      return null;
-    }
-
-    try {
-      const result = Ranker.getHand(cards);
-      console.log("✅ Hand rank result:", result);
-      return result?.description || null;
-    } catch (err) {
-      console.error("❌ Ranker failed on cards:", cards, err);
-      return null;
-    }
-  };
-
-  // const getPlayerHandRank = () => {
-  //   const board = gameState.communityCards || [];
-
-  //   if (holeCards.length < 2 || board.length + holeCards.length < 5)
-  //     return null;
-
-  //   const toRankerFormat = (card) => {
-  //     console.log("Converting card to Ranker format:", card);
-  //     if (!card || !card.value || !card.suit) return null;
-
-  //     const rank = card.value === "0" ? "T" : card.value;
-  //     const suit = card.suit.toLowerCase(); // Must be 'c', 'd', 'h', or 's'
-  //     return rank + suit;
-  //   };
-
-  //   // const toRankerFormat = (card) => {
-  //   //   if (!card || !card.value || !card.suit) return null;
-  //   //   const rank = card.value === "0" ? "T" : card.value;
-  //   //   const suit = card.suit.toLowerCase();
-  //   //   return rank + suit;
-  //   // };
-
-  //   const cards = [...holeCards, ...board].map(toRankerFormat);
-  //   console.log("Cards to rank:", cards);
-  //   try {
-  //     const result = Ranker.getHand(cards);
-  //     return result?.description || null;
-  //   } catch (err) {
-  //     console.warn("Ranker failed on cards:", cards, err);
-  //     return null;
-  //   }
-  // };
-
-  const isPlayersTurn = currentTurnPlayerId === activePlayerId;
-  const chatMessages = Object.values(messages)
-    .flat()
-    .filter((m) => m?.payload?.type === "chat")
-    .map((m) => m.payload);
-
-  console.log("displayGameMessages ", displayGameMessages);
-  console.log("currentTurnPlayerId ", currentTurnPlayerId);
-  console.log("activePlayerId ", activePlayerId);
-  console.log("playersAtTable ", playersAtTable);
-  console.log("gameState ", gameState);
-  console.log("playerBets ", playerBets);
+  }, [displayGameMessages]);
 
   return (
     <div className="container-fluidpy-4">
@@ -495,6 +425,22 @@ const GameTable = ({
         >
           Leave Table
         </button>
+        {/* <button
+          type="button"
+          className="btn btn-secondary mb-2"
+          onClick={() => {
+            setPlayersAtTable((prev) =>
+              prev.map((id) => (id === activePlayerId ? null : id))
+            );
+            setPlayerBets((prev) => {
+              const updated = { ...prev };
+              delete updated[activePlayerId];
+              return updated;
+            });
+          }}
+        >
+          Leave Table
+        </button> */}
 
         <div
           className="mb-5"
@@ -561,7 +507,7 @@ const GameTable = ({
                 fontWeight: 700,
               }}
             >
-              Pot: ${gameState.pot || 0}
+              Pot: ${potTotal}
             </div>
 
             <div
@@ -575,21 +521,31 @@ const GameTable = ({
                 flexWrap: "wrap",
               }}
             >
-              {gameState.communityCards.map((code, i) => {
-                const card = parseCard(code);
-                return (
-                  <img
-                    key={i}
-                    src={card.src}
-                    alt={card.id}
-                    style={{
-                      width: "clamp(30px, 7vw, 60px)",
-                      height: "auto",
-                      flexShrink: 0,
-                    }}
-                  />
-                );
-              })}
+              {gameState.communityCards.map((card, i) => (
+                <img
+                  key={i}
+                  src={card.src}
+                  alt={card.id}
+                  style={{
+                    width: "clamp(30px, 7vw, 60px)",
+                    height: "auto",
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+
+              {/* {faceUpCards.map((card) => (
+                <img
+                  key={card.id}
+                  src={card.src}
+                  alt={card.alt}
+                  style={{
+                    width: "clamp(30px, 7vw, 60px)",
+                    height: "auto",
+                    flexShrink: 0,
+                  }}
+                />
+              ))} */}
             </div>
           </div>
 
@@ -610,7 +566,7 @@ const GameTable = ({
                   seatCount={seatCount}
                   playerId={playerId}
                   playerObj={playerObj}
-                  currentBet={gameState?.players?.[playerId]?.bet || 0}
+                  currentBet={playerBets[playerId] || 0}
                   isDealer={playerId === dealerId}
                   seat={{
                     top: (y / height) * 100,
@@ -628,7 +584,7 @@ const GameTable = ({
                   gameState={gameState}
                   isCurrentTurn={playerId === currentTurnPlayerId}
                   stack={playerStacks[playerId] || 0}
-                  holeCards={playerHands[playerId] || []}
+                  holeCards={holeCards}
                 />
               );
             })}
@@ -643,7 +599,157 @@ const GameTable = ({
                 </span>
               </div>
             )}
+            {/* Bet Input with +/- Buttons */}
+            {/* <div className="w-100 mb-2 d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.max(minBet, prev - smallBlind))
+                }
+              >
+                –
+              </button>
+              <input
+                type="number"
+                className="form-control"
+                min={minBet}
+                max={1000}
+                step={smallBlind}
+                value={betAmount}
+                onChange={handleInputChange}
+              />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.min(1000, prev + smallBlind))
+                }
+              >
+                +
+              </button>
+            </div> */}
+            {/* <div
+              className="w-100 mb-2 d-flex align-items-center gap-2"
+              style={{
+                pointerEvents:
+                  currentTurnPlayerId !== activePlayerId ? "none" : "auto",
+                opacity: currentTurnPlayerId !== activePlayerId ? 0.5 : 1,
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.max(minBet, prev - smallBlind))
+                }
+              >
+                –
+              </button>
+              <input
+                type="number"
+                className="form-control"
+                min={minBet}
+                max={playerStacks[activePlayerId] || minBet}
+                step={smallBlind}
+                value={betAmount}
+                onChange={handleInputChange}
+              />
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() =>
+                  setBetAmount((prev) => Math.min(1000, prev + smallBlind))
+                }
+              >
+                +
+              </button>
+            </div>
 
+            <div
+              className="btn-group mb-2 w-100 gap-2"
+              role="group"
+              aria-label="Action Buttons"
+              style={{
+                pointerEvents:
+                  currentTurnPlayerId !== activePlayerId ? "none" : "auto",
+                opacity: currentTurnPlayerId !== activePlayerId ? 0.5 : 1,
+              }}
+            >
+              <button type="button" className="btn btn-secondary">
+                Fold
+              </button>
+              <button type="button" className="btn btn-secondary">
+                Check
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setPlayerBets((prev) => {
+                    const newBets = {
+                      ...prev,
+                      [activePlayerId]: (prev[activePlayerId] || 0) + betAmount,
+                    };
+                    return newBets;
+                  });
+
+                  setPotTotal((prev) => prev + betAmount); // 💰 add bet to pot immediately
+
+                  setPlayerStacks((prev) => ({
+                    ...prev,
+                    [activePlayerId]: Math.max(
+                      0,
+                      (prev[activePlayerId] || 0) - betAmount
+                    ),
+                  }));
+
+                  setGameState((prev) => {
+                    const activePlayers = playersAtTable.filter(Boolean);
+                    const nextIndex = getNextTurnIndex(
+                      prev.currentTurnIndex,
+                      activePlayers
+                    );
+                    const updatedTurns = [...prev.turnsInRound, activePlayerId];
+                    const uniqueTurns = new Set(updatedTurns);
+                    const isRoundComplete =
+                      uniqueTurns.size === activePlayers.length;
+
+                    if (isRoundComplete) {
+                      setTimeout(() => {
+                        setPotTotal(
+                          (prevPot) => prevPot + betsTotalRef.current
+                        );
+                        setBetsTotal(0);
+                        setPlayerBets({});
+                      }, 1000);
+                    }
+
+                    return {
+                      ...prev,
+                      currentTurnIndex: nextIndex,
+                      turnsInRound: isRoundComplete ? [] : updatedTurns,
+                      street: isRoundComplete
+                        ? getNextStreet(prev.street)
+                        : prev.street,
+                      playerActions: {
+                        ...prev.playerActions,
+                        [activePlayerId]: {
+                          action: "bet",
+                          amount: betAmount,
+                        },
+                      },
+                    };
+                  });
+
+                  setTimeout(() => {
+                    setGameState((prev) => ({ ...prev }));
+                  }, 0);
+                }}
+              >
+                Bet {betAmount}
+              </button>
+            </div> */}
             <div className="w-100 mb-2 d-flex align-items-center gap-2">
               <button
                 type="button"

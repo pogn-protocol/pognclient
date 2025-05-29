@@ -85,7 +85,7 @@ const RelayItem = ({
       console.log("Previous message:", prevMessage);
       if (lastJsonMessage.relayId !== id) {
         console.warn(
-          `⚠️ Message from relay ${id} does not match the current relayId. Ignoring.`
+          `⚠️ Message from relay ${id} does not match the current relayId  ${lastJsonMessage.relayId}. Ignoring.`
         );
         return;
       }
@@ -93,6 +93,7 @@ const RelayItem = ({
         console.warn("⚠️ Message from relay does not have a uuid. Adding one.");
         lastJsonMessage.uuid = uuid();
       }
+      console.log("Setting message:", lastJsonMessage);
       setPrevMessage(lastJsonMessage);
 
       onMessage(id, lastJsonMessage);
