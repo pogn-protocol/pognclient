@@ -6,7 +6,8 @@ import { getTurnPlayer, getNextTurnIndex, getNextStreet } from "./pokerUtils";
 import Ranker from "handranker";
 import ChatWindow from "./ChatWindow";
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
-
+// const { game, gameId, playerId, gameAction, gameActionParams } = payload;
+// ^^^^ new payload structure to match server
 const CONFIG = {
   seatCountMin: 2,
   seatCountMax: 9,
@@ -104,6 +105,7 @@ const GameTable = ({
   };
 
   const handleSitInternal = async (seatIndex) => {
+    console.log("💡 SITTING AT SEAT INDEX:", seatIndex);
     let finalId;
 
     if (!activePlayerId) {
@@ -126,7 +128,9 @@ const GameTable = ({
           type: "displayGame",
           action: "sit",
           playerId: finalId,
-          seatIndex,
+          gameActionParams: {
+            seatIndex,
+          },
         },
       });
     } else {
@@ -139,7 +143,9 @@ const GameTable = ({
           type: "displayGame",
           action: "sit",
           playerId: activePlayerId,
-          seatIndex,
+          gameActionParams: {
+            seatIndex,
+          },
         },
       });
     }
@@ -180,89 +186,62 @@ const GameTable = ({
     });
   };
 
-  // Updated logic for handling private hands
   useEffect(() => {
     if (!activePlayerId) return;
-    console.log("Display game messages:", displayGameMessages);
-    const privateHandMsg = [...displayGameMessages]
-      .reverse()
-      .find(
-        (m) => m?.action === "privateHand" && m?.playerId === activePlayerId
-      );
 
-    if (privateHandMsg) {
+    console.log("🔍 Looking for latest private hand message...");
+    const latestPrivate = [...displayGameMessages]
+      .reverse()
+      .find((m) => m?.hand && m?.hands);
+
+    if (latestPrivate) {
+      console.log("✅ Found latest private hand message:", latestPrivate);
+
       const parsedHands = {};
-      for (const [pid, hand] of Object.entries(privateHandMsg.hands)) {
+      for (const [pid, hand] of Object.entries(latestPrivate.hands)) {
+        console.log(`🪪 Parsing hand for ${pid}:`, hand);
         parsedHands[pid] = Array.isArray(hand)
           ? hand.map((card) => (card ? parseCard(card) : null))
           : [];
       }
+
       setPlayerHands(parsedHands);
-      setHoleCards(parsedHands[activePlayerId] || []);
+
+      const myHand = Array.isArray(latestPrivate.hand)
+        ? latestPrivate.hand.map((card) => parseCard(card))
+        : [];
+
+      console.log(
+        `👤 Setting hole cards for activePlayerId ${activePlayerId}:`,
+        myHand
+      );
+      setHoleCards(myHand);
+    } else {
+      console.warn("❌ No valid private hand message found.");
     }
   }, [displayGameMessages, activePlayerId]);
 
-  // Updated logic for processing display game messages
+  // Updated logic for handling private hands
   // useEffect(() => {
-  //   const msg = displayGameMessages[displayGameMessages.length - 1];
-  //   console.log("Processing displayGame message:", msg);
-  //   if (!msg) return;
-
-  //   const {
-  //     action,
-  //     playerId,
-  //     seatIndex,
-  //     playersAtTable: incomingSeats,
-  //     gameState: newGameState,
-  //   } = msg;
-
-  //   if (Array.isArray(incomingSeats)) {
-  //     const updatedSeats = Array(seatCount).fill(null);
-
-  //     for (const entry of incomingSeats) {
-  //       const { playerId, seatIndex } = entry;
-  //       if (
-  //         typeof seatIndex === "number" &&
-  //         seatIndex < seatCount &&
-  //         playerId
-  //       ) {
-  //         updatedSeats[seatIndex] = playerId;
-  //       }
-  //     }
-
-  //     setPlayersAtTable((prev) => {
-  //       const same =
-  //         prev.length === updatedSeats.length &&
-  //         prev.every((val, i) => val === updatedSeats[i]);
-
-  //       return same ? prev : updatedSeats;
-  //     });
-  //   }
-
-  //   if (newGameState?.players) {
-  //     const stackMap = {};
-  //     for (const [pid, pdata] of Object.entries(newGameState.players)) {
-  //       stackMap[pid] = pdata.stack;
-  //     }
-  //     setPlayerStacks(stackMap);
-  //     setGameState((prev) => ({ ...prev, ...newGameState }));
-  //   }
-
-  //   if (action === "sit" && typeof seatIndex === "number") {
-  //     setPlayersAtTable((prev) => {
-  //       if (prev.includes(playerId)) return prev;
-  //       const updated = [...prev];
-  //       updated[seatIndex] = playerId;
-  //       return updated;
-  //     });
-  //   }
-
-  //   if (action === "leave") {
-  //     setPlayersAtTable((prev) =>
-  //       prev.map((id) => (id === playerId ? null : id))
+  //   if (!activePlayerId) return;
+  //   console.log("Display game messages:", displayGameMessages);
+  //   const privateHandMsg = [...displayGameMessages]
+  //     .reverse()
+  //     .find(
+  //       (m) => m?.action === "privateHand" && m?.playerId === activePlayerId
   //     );
+
+  //   if (privateHandMsg) {
+  //     const parsedHands = {};
+  //     for (const [pid, hand] of Object.entries(privateHandMsg.hands)) {
+  //       parsedHands[pid] = Array.isArray(hand)
+  //         ? hand.map((card) => (card ? parseCard(card) : null))
+  //         : [];
+  //     }
+  //     setPlayerHands(parsedHands);
+  //     setHoleCards(parsedHands[activePlayerId] || []);
   //   }
-  // }, [displayGameMessages, seatCount]);
+  // }, [displayGameMessages, activePlayerId]);
 
   useEffect(() => {
     const msg = displayGameMessages[displayGameMessages.length - 1];
@@ -339,13 +318,27 @@ const GameTable = ({
   }, [displayGameMessages, seatCount]);
 
   function parseCard(code) {
-    const value = code[0] === "T" ? "0" : code[0]; // "T" is stored as "0" in deckofcardsapi
-    const suit = code[1].toUpperCase(); // e.g. "d" => "D"
+    if (!code || typeof code !== "string") return null;
+
+    if (code === "X") {
+      return {
+        id: "X",
+        src: "https://deckofcardsapi.com/static/img/back.png", // ✅ This is their card back image
+        value: "X",
+        suit: "X",
+        isFaceDown: true,
+      };
+    }
+
+    const value = code[0] === "T" ? "0" : code[0];
+    const suit = code[1].toUpperCase();
+
     return {
       id: code,
       src: `https://deckofcardsapi.com/static/img/${value}${suit}.png`,
       value,
       suit,
+      isFaceDown: false,
     };
   }
 
@@ -578,7 +571,8 @@ const GameTable = ({
                 relayId: "displayGame",
                 payload: {
                   type: "displayGame",
-                  action: "startHand",
+                  action: "gameAction",
+                  gameAction: "startHand",
                   playerId: activePlayerId,
                 },
               })
@@ -783,7 +777,8 @@ const GameTable = ({
                     relayId: "displayGame",
                     payload: {
                       type: "displayGame",
-                      action: "fold",
+                      action: "gameAction",
+                      gameAction: "fold",
                       playerId: activePlayerId,
                     },
                   })
@@ -801,7 +796,8 @@ const GameTable = ({
                     relayId: "displayGame",
                     payload: {
                       type: "displayGame",
-                      action: "check",
+                      action: "gameAction",
+                      gameAction: "check",
                       playerId: activePlayerId,
                     },
                   })
@@ -819,9 +815,12 @@ const GameTable = ({
                     relayId: "displayGame",
                     payload: {
                       type: "displayGame",
-                      action: "bet",
+                      action: "gameAction",
+                      gameAction: "bet",
                       playerId: activePlayerId,
-                      amount: betAmount,
+                      gameActionParams: {
+                        amount: betAmount,
+                      },
                     },
                   })
                 }
