@@ -192,39 +192,86 @@ const GameTable = ({
   };
 
   useEffect(() => {
-    if (!activePlayerId) return;
-
-    console.log("🔍 Looking for latest private hand message...");
     const latestPrivate = [...displayGameMessages]
       .reverse()
-      .find((m) => m?.hand && m?.hands);
+      .find((m) => m?.hands); // ✅ Just check for hands, ignore empty hand field
+
+    // const latestPrivate = [...displayGameMessages]
+    //   .reverse()
+    //   .find((m) => m?.hand && m?.hands);
 
     if (latestPrivate) {
       console.log("✅ Found latest private hand message:", latestPrivate);
 
       const parsedHands = {};
       for (const [pid, hand] of Object.entries(latestPrivate.hands)) {
-        console.log(`🪪 Parsing hand for ${pid}:`, hand);
-        parsedHands[pid] = Array.isArray(hand)
+        const parsed = Array.isArray(hand)
           ? hand.map((card) => (card ? parseCard(card) : null))
           : [];
+        parsedHands[pid] = parsed;
       }
-
       setPlayerHands(parsedHands);
 
+      const viewerId = activePlayerId || null;
       const myHand = Array.isArray(latestPrivate.hand)
         ? latestPrivate.hand.map((card) => parseCard(card))
         : [];
 
-      console.log(
-        `👤 Setting hole cards for activePlayerId ${activePlayerId}:`,
-        myHand
-      );
+      console.log(`👤 Hole cards for viewer ${viewerId}:`, myHand);
       setHoleCards(myHand);
     } else {
       console.warn("❌ No valid private hand message found.");
     }
   }, [displayGameMessages, activePlayerId]);
+
+  // useEffect(() => {
+  //   if (!activePlayerId) return;
+
+  //   console.log("🔍 Looking for latest private hand message...");
+  //   const latestPrivate = [...displayGameMessages]
+  //     .reverse()
+  //     .find((m) => m?.hand && m?.hands);
+
+  //   if (latestPrivate) {
+  //     console.log("✅ Found latest private hand message:", latestPrivate);
+
+  //     const parsedHands = {};
+  //     // for (const [pid, hand] of Object.entries(latestPrivate.hands)) {
+  //     //   console.log(`🪪 Parsing hand for ${pid}:`, hand);
+  //     //   parsedHands[pid] = Array.isArray(hand)
+  //     //     ? hand.map((card) => (card ? parseCard(card) : null))
+  //     //     : [];
+  //     // }
+
+  //     for (const [pid, hand] of Object.entries(latestPrivate.hands)) {
+  //       const parsed = Array.isArray(hand)
+  //         ? hand.map((card) => (card ? parseCard(card) : null))
+  //         : [];
+  //       parsedHands[pid] = parsed;
+  //     }
+  //     setPlayerHands(parsedHands);
+
+  //     //setPlayerHands(parsedHands);
+
+  //     // const myHand = Array.isArray(latestPrivate.hand)
+  //     //   ? latestPrivate.hand.map((card) => parseCard(card))
+  //     //   : [];
+
+  //     const viewerId = activePlayerId || null;
+  //     const myHand = Array.isArray(latestPrivate.hand)
+  //       ? latestPrivate.hand.map((card) => parseCard(card))
+  //       : [];
+
+  //     console.log(
+  //       `👤 Setting hole cards for activePlayerId ${activePlayerId}:`,
+  //       myHand
+  //     );
+
+  //     setHoleCards(myHand);
+  //   } else {
+  //     console.warn("❌ No valid private hand message found.");
+  //   }
+  // }, [displayGameMessages, activePlayerId]);
 
   // Updated logic for handling private hands
   // useEffect(() => {
@@ -416,6 +463,8 @@ const GameTable = ({
   }, [gameState.street, gameState.communityCards, gameState.deck]);
 
   const getPlayerHandRank = () => {
+    if (!holeCards?.length) return null;
+
     console.log("🔍 Calculating player hand rank...");
     const board = gameState.communityCards || [];
     console.log("🃏 Board cards:", board);
@@ -483,6 +532,20 @@ const GameTable = ({
       setWinnerOverlayId(null);
     }
   }, [gameState.street, gameState.showdownWinner]);
+
+  useEffect(() => {
+    if (!activePlayerId) return;
+
+    sendMessage("displayGame", {
+      relayId: "displayGame",
+      payload: {
+        type: "displayGame",
+        action: "observe",
+        playerId: activePlayerId,
+        gameId: "displayGame",
+      },
+    });
+  }, [activePlayerId]);
 
   console.log("displayGameMessages ", displayGameMessages);
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
@@ -736,139 +799,144 @@ const GameTable = ({
                   gameState={gameState}
                   isCurrentTurn={playerId === currentTurnPlayerId}
                   stack={playerStacks[playerId] || 0}
-                  holeCards={playerHands[playerId] || []}
+                  holeCards={
+                    Array.isArray(playerHands[playerId])
+                      ? playerHands[playerId]
+                      : []
+                  }
                   isWinner={playerId && playerId === winnerOverlayId}
                 />
               );
             })}
         </div>
 
-        {playersAtTable.includes(activePlayerId) && (
-          <div className="w-50 d-flex mt-5 flex-column justify-content-end">
-            {getPlayerHandRank() && (
-              <div className="text-center my-3">
-                <span className="badge bg-success">
-                  You have: {getPlayerHandRank()}
-                </span>
+        {playersAtTable.includes(activePlayerId) &&
+          gameState.players?.[activePlayerId] && (
+            <div className="w-50 d-flex mt-5 flex-column justify-content-end">
+              {getPlayerHandRank() && (
+                <div className="text-center my-3">
+                  <span className="badge bg-success">
+                    You have: {getPlayerHandRank()}
+                  </span>
+                </div>
+              )}
+
+              <div className="w-100 mb-2 d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() =>
+                    setBetAmount((prev) => Math.max(minBet, prev - smallBlind))
+                  }
+                  disabled={currentTurnPlayerId !== activePlayerId}
+                >
+                  –
+                </button>
+                <input
+                  type="number"
+                  className="form-control"
+                  min={minBet}
+                  max={playerStacks[activePlayerId] || minBet}
+                  step={smallBlind}
+                  value={betAmount}
+                  onChange={handleInputChange}
+                  disabled={currentTurnPlayerId !== activePlayerId}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() =>
+                    setBetAmount((prev) => Math.min(1000, prev + smallBlind))
+                  }
+                  disabled={currentTurnPlayerId !== activePlayerId}
+                >
+                  +
+                </button>
               </div>
-            )}
-
-            <div className="w-100 mb-2 d-flex align-items-center gap-2">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() =>
-                  setBetAmount((prev) => Math.max(minBet, prev - smallBlind))
-                }
-                disabled={currentTurnPlayerId !== activePlayerId}
+              <div
+                className="btn-group mb-2 w-100 gap-2"
+                role="group"
+                aria-label="Action Buttons"
               >
-                –
-              </button>
-              <input
-                type="number"
-                className="form-control"
-                min={minBet}
-                max={playerStacks[activePlayerId] || minBet}
-                step={smallBlind}
-                value={betAmount}
-                onChange={handleInputChange}
-                disabled={currentTurnPlayerId !== activePlayerId}
-              />
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() =>
-                  setBetAmount((prev) => Math.min(1000, prev + smallBlind))
-                }
-                disabled={currentTurnPlayerId !== activePlayerId}
-              >
-                +
-              </button>
-            </div>
-            <div
-              className="btn-group mb-2 w-100 gap-2"
-              role="group"
-              aria-label="Action Buttons"
-            >
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={currentTurnPlayerId !== activePlayerId}
-                onClick={() =>
-                  sendMessage("displayGame", {
-                    relayId: "displayGame",
-                    payload: {
-                      type: "displayGame",
-                      action: "gameAction",
-                      gameAction: "fold",
-                      playerId: activePlayerId,
-                      gameId: "displayGame",
-                    },
-                  })
-                }
-              >
-                Fold
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={currentTurnPlayerId !== activePlayerId}
-                onClick={() =>
-                  sendMessage("displayGame", {
-                    relayId: "displayGame",
-                    payload: {
-                      type: "displayGame",
-                      action: "gameAction",
-                      gameAction: "check",
-                      playerId: activePlayerId,
-                      gameId: "displayGame",
-                    },
-                  })
-                }
-              >
-                Check
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={currentTurnPlayerId !== activePlayerId}
-                onClick={() =>
-                  sendMessage("displayGame", {
-                    relayId: "displayGame",
-                    payload: {
-                      type: "displayGame",
-                      action: "gameAction",
-                      gameAction: "bet",
-                      playerId: activePlayerId,
-                      gameId: "displayGame",
-
-                      gameActionParams: {
-                        amount: betAmount,
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={currentTurnPlayerId !== activePlayerId}
+                  onClick={() =>
+                    sendMessage("displayGame", {
+                      relayId: "displayGame",
+                      payload: {
+                        type: "displayGame",
+                        action: "gameAction",
+                        gameAction: "fold",
+                        playerId: activePlayerId,
+                        gameId: "displayGame",
                       },
-                    },
-                  })
-                }
-              >
-                Bet {betAmount}
-              </button>
-            </div>
+                    })
+                  }
+                >
+                  Fold
+                </button>
 
-            {/* Bet Slider */}
-            <div className="w-100 mb-2">
-              <input
-                type="range"
-                className="form-range"
-                min={minBet}
-                max={playerStacks[activePlayerId] || minBet}
-                step={smallBlind}
-                value={betAmount}
-                onChange={handleSliderChange}
-              />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={currentTurnPlayerId !== activePlayerId}
+                  onClick={() =>
+                    sendMessage("displayGame", {
+                      relayId: "displayGame",
+                      payload: {
+                        type: "displayGame",
+                        action: "gameAction",
+                        gameAction: "check",
+                        playerId: activePlayerId,
+                        gameId: "displayGame",
+                      },
+                    })
+                  }
+                >
+                  Check
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={currentTurnPlayerId !== activePlayerId}
+                  onClick={() =>
+                    sendMessage("displayGame", {
+                      relayId: "displayGame",
+                      payload: {
+                        type: "displayGame",
+                        action: "gameAction",
+                        gameAction: "bet",
+                        playerId: activePlayerId,
+                        gameId: "displayGame",
+
+                        gameActionParams: {
+                          amount: betAmount,
+                        },
+                      },
+                    })
+                  }
+                >
+                  Bet {betAmount}
+                </button>
+              </div>
+
+              {/* Bet Slider */}
+              <div className="w-100 mb-2">
+                <input
+                  type="range"
+                  className="form-range"
+                  min={minBet}
+                  max={playerStacks[activePlayerId] || minBet}
+                  step={smallBlind}
+                  value={betAmount}
+                  onChange={handleSliderChange}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
   );
