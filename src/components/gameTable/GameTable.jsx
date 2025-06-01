@@ -128,6 +128,7 @@ const GameTable = ({
           type: "displayGame",
           action: "sit",
           playerId: finalId,
+          gameId: "displayGame",
           gameActionParams: {
             seatIndex,
           },
@@ -143,6 +144,8 @@ const GameTable = ({
           type: "displayGame",
           action: "sit",
           playerId: activePlayerId,
+          gameId: "displayGame",
+
           gameActionParams: {
             seatIndex,
           },
@@ -181,6 +184,8 @@ const GameTable = ({
       payload: {
         type: "displayGame",
         action: "leave",
+        gameId: "displayGame",
+
         playerId: activePlayerId,
       },
     });
@@ -360,7 +365,23 @@ const GameTable = ({
 
   const currentTurnPlayerId = gameState.turn;
 
-  const dealerId = playersAtTable[gameState.dealerIndex];
+  const dealerId =
+    typeof gameState.buttonIndex === "number"
+      ? playersAtTable[gameState.buttonIndex]
+      : null;
+
+  useEffect(() => {
+    console.log("🔍 Checking dealer ID...");
+    console.log("gameState.buttonIndex:", gameState.buttonIndex);
+    console.log("playersAtTable:", playersAtTable);
+    if (
+      typeof gameState.buttonIndex === "number" &&
+      playersAtTable[gameState.buttonIndex]
+    ) {
+      const dealerId = playersAtTable[gameState.buttonIndex];
+      console.log("🎯 Dealer is:", dealerId);
+    }
+  }, [gameState.buttonIndex, playersAtTable]);
 
   useEffect(() => {
     const { street, communityCards, deck } = gameState;
@@ -574,6 +595,7 @@ const GameTable = ({
                   action: "gameAction",
                   gameAction: "startHand",
                   playerId: activePlayerId,
+                  gameId: "displayGame",
                 },
               })
             }
@@ -780,6 +802,7 @@ const GameTable = ({
                       action: "gameAction",
                       gameAction: "fold",
                       playerId: activePlayerId,
+                      gameId: "displayGame",
                     },
                   })
                 }
@@ -799,6 +822,7 @@ const GameTable = ({
                       action: "gameAction",
                       gameAction: "check",
                       playerId: activePlayerId,
+                      gameId: "displayGame",
                     },
                   })
                 }
@@ -818,6 +842,8 @@ const GameTable = ({
                       action: "gameAction",
                       gameAction: "bet",
                       playerId: activePlayerId,
+                      gameId: "displayGame",
+
                       gameActionParams: {
                         amount: betAmount,
                       },
