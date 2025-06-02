@@ -17,6 +17,7 @@ const Players = ({
   setPlayers,
   players,
 }) => {
+  // const [players, setPlayers] = useState([]);
   const { nostrPubkey, nostrDetected, loginNostr, logoutNostr } =
     useNostrExtensionKey();
   const { nostrProfile, follows, followProfiles } = useNostr();
@@ -38,7 +39,7 @@ const Players = ({
     });
   }, []);
 
-  // CONSOLIDATED: Add nostr key on detection (removed duplicate)
+  // Add nostr key on detection
   useEffect(() => {
     if (!nostrDetected || !nostrPubkey) return;
     setPlayers((prev) =>
@@ -102,32 +103,82 @@ const Players = ({
     );
     setActivePlayerId(pk);
   };
-
-  // CONSOLIDATED: Single effect to handle activePlayerId initialization
   useEffect(() => {
-    if (activePlayerId) return; // Don't run if activePlayerId is already set
+    if (activePlayerId) return;
 
     const storedId = sessionStorage.getItem("activePlayerId");
 
-    // First priority: restore from sessionStorage
     if (storedId) {
       setPlayers((prev) => {
         const exists = prev.some((p) => p.id === storedId);
         return exists
           ? prev
-          : [...prev, { id: storedId, pubkeySource: "restored" }];
+          : [
+              ...prev.filter((p) => p.pubkeySource !== "restored"),
+              {
+                id: storedId,
+                pubkeySource: "restored",
+              },
+            ];
       });
       setActivePlayerId(storedId);
       return;
     }
 
-    // Second priority: use nostr pubkey if available
     if (nostrPubkey && players.some((p) => p.id === nostrPubkey)) {
       setActivePlayerId(nostrPubkey);
       return;
     }
 
-    // Last resort: use the last player in the list
+    if (players.length > 0) {
+      setActivePlayerId(players[players.length - 1].id);
+    }
+  }, [players, nostrPubkey, activePlayerId]);
+
+  // useEffect(() => {
+  //   const storedId = sessionStorage.getItem("activePlayerId");
+
+  //   if (!activePlayerId && storedId && players.some((p) => p.id === storedId)) {
+  //     setActivePlayerId(storedId);
+  //   }
+  // }, [players, activePlayerId]);
+
+  useEffect(() => {
+    if (!nostrPubkey) return;
+
+    setPlayers((prev) => {
+      const alreadyExists = prev.some((p) => p.id === nostrPubkey);
+      return alreadyExists
+        ? prev
+        : [...prev, { id: nostrPubkey, pubkeySource: "nostr" }];
+    });
+  }, [nostrPubkey]);
+
+  useEffect(() => {
+    if (activePlayerId) return;
+
+    const storedId = sessionStorage.getItem("activePlayerId");
+
+    // Always restore storedId even if not in players[]
+    if (storedId) {
+      const exists = players.some((p) => p.id === storedId);
+      if (!exists) {
+        setPlayers((prev) => [
+          ...prev,
+          { id: storedId, pubkeySource: "restored" },
+        ]);
+      }
+      setActivePlayerId(storedId);
+      return;
+    }
+
+    // Otherwise default to nostrPubkey
+    if (nostrPubkey && players.some((p) => p.id === nostrPubkey)) {
+      setActivePlayerId(nostrPubkey);
+      return;
+    }
+
+    // Otherwise default to last player
     if (players.length > 0) {
       setActivePlayerId(players[players.length - 1].id);
     }

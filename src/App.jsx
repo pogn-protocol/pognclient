@@ -202,18 +202,20 @@ const App = () => {
         </header>
 
         <div className="w-full max-w-screen-xl flex flex-col gap-2">
-          <GameTable
-            playersAtTable={playersAtTable}
-            onSit={handleSit}
-            activePlayerId={activePlayerId}
-            setActivePlayerId={setActivePlayerId}
-            setPlayers={setPlayers}
-            players={players}
-            nostrProfileData={nostrProfileData}
-            sendMessage={handleSendMessage}
-            setAddRelayConnections={setAddRelayConnections}
-            messages={Object.values(messages).flat() || []}
-          />
+          {activePlayerId && (
+            <GameTable
+              playersAtTable={playersAtTable}
+              onSit={handleSit}
+              activePlayerId={activePlayerId}
+              setActivePlayerId={setActivePlayerId}
+              setPlayers={setPlayers}
+              players={players}
+              nostrProfileData={nostrProfileData}
+              sendMessage={handleSendMessage}
+              setAddRelayConnections={setAddRelayConnections}
+              messages={Object.values(messages).flat() || []}
+            />
+          )}
           <div className="">
             <p className="italic text-gray-600">
               Hint: For demo play of auto-generated games, open two clients and

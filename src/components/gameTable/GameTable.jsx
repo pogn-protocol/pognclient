@@ -136,7 +136,7 @@ const GameTable = ({
       });
     } else {
       // Then send the sit message
-      console.log("💥 SENDING FINAL ID:", finalId);
+      console.log("💥 SENDINGID:", activePlayerId);
 
       sendMessage("displayGame", {
         relayId: "displayGame",
@@ -534,18 +534,24 @@ const GameTable = ({
   }, [gameState.street, gameState.showdownWinner]);
 
   useEffect(() => {
-    if (!activePlayerId) return;
+    if (!activePlayerId || typeof sendMessage !== "function") return;
 
-    sendMessage("displayGame", {
-      relayId: "displayGame",
-      payload: {
-        type: "displayGame",
-        action: "observe",
-        playerId: activePlayerId,
-        gameId: "displayGame",
-      },
-    });
-  }, [activePlayerId]);
+    const timer = setTimeout(() => {
+      console.log("📤 [OBSERVE] Sending for:", activePlayerId);
+
+      sendMessage("displayGame", {
+        relayId: "displayGame",
+        payload: {
+          type: "displayGame",
+          action: "observe",
+          playerId: activePlayerId,
+          gameId: "displayGame",
+        },
+      });
+    }, 200); // bump delay a little more for safety
+
+    return () => clearTimeout(timer);
+  }, [activePlayerId, sendMessage]);
 
   console.log("displayGameMessages ", displayGameMessages);
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
