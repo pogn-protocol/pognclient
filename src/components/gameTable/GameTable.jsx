@@ -6,6 +6,15 @@ import { getTurnPlayer, getNextTurnIndex, getNextStreet } from "./pokerUtils";
 import Ranker from "handranker";
 import ChatWindow from "./ChatWindow";
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
+import { SimplePool } from "nostr-tools/pool";
+const relays = [
+  "wss://relay.damus.io",
+  "wss://relay.snort.social",
+  "wss://nos.lol",
+  "wss://relay.nostr.band",
+];
+const pool = new SimplePool();
+
 // const { game, gameId, playerId, gameAction, gameActionParams } = payload;
 // ^^^^ new payload structure to match server
 const CONFIG = {
@@ -25,7 +34,9 @@ const GameTable = ({
   messages,
 }) => {
   const [seatCount, setSeatCount] = useState(6);
-  const [playersAtTable, setPlayersAtTable] = useState([]);
+  const [playersAtTable, setPlayersAtTable] = useState(() =>
+    Array(6).fill(null)
+  );
   const tableRef = useRef(null);
   const [tableSize, setTableSize] = useState({ width: 600, height: 300 });
   const minBet = 50;
@@ -46,29 +57,26 @@ const GameTable = ({
   const [playerStacks, setPlayerStacks] = useState({});
   const hasJoinedChatRef = useRef(false);
   const [winnerOverlayId, setWinnerOverlayId] = useState(null);
+  const [playerChatMessages, setPlayerChatMessages] = useState({});
+  const [processedMessageIds, setProcessedMessageIds] = useState(new Set());
 
-  // Initialize stacks if not set
+  const displayGameMessages = useMemo(
+    () =>
+      Object.values(messages)
+        .flat()
+        .filter((m) => m?.payload?.type === "displayGame")
+        .map((m) => m.payload),
+    [messages]
+  );
   useEffect(() => {
-    setPlayerStacks((prev) => {
-      const updated = { ...prev };
-      for (const id of playersAtTable) {
-        if (id && !(id in updated)) {
-          updated[id] = 1000; // starting stack
-        }
-      }
-      return updated;
-    });
-  }, [playersAtTable]);
+    console.log("🔍 Messages updated:", messages);
+  }, [messages]);
 
-  const allPlayers = useMemo(() => {
-    const bot1 = { id: "pokerBot", name: "Bot" };
-    const bot2 = { id: "pokerBot2", name: "Bot 2" };
-    const filtered = players.filter(
-      (p) => p.id !== "pokerBot" && p.id !== "pokerBot2"
-    );
-    return [...filtered, bot1, bot2];
-  }, [players]);
+  useEffect(() => {
+    console.log("🔍 displayGameMessages:", displayGameMessages);
+  }, [displayGameMessages]);
 
+  //tableSizing
   useEffect(() => {
     const updateSize = () => {
       if (tableRef.current) {
@@ -83,23 +91,25 @@ const GameTable = ({
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const displayGameMessages = useMemo(
-    () =>
-      Object.values(messages)
-        .flat()
-        .filter((m) => m?.payload?.type === "displayGame")
-        .map((m) => m.payload),
-    [messages]
-  );
-
   const handleSeatChange = (e) => {
     const newCount = parseInt(e.target.value);
     setSeatCount(newCount);
+
     setPlayersAtTable((prev) => {
       const updated = Array(newCount).fill(null);
-      for (let i = 0; i < Math.min(prev.length, newCount); i++) {
-        updated[i] = prev[i];
-      }
+
+      // preserve only those with valid seatIndex < newCount
+      prev.forEach((player) => {
+        if (
+          player &&
+          typeof player === "object" &&
+          typeof player.seatIndex === "number" &&
+          player.seatIndex < newCount
+        ) {
+          updated[player.seatIndex] = player;
+        }
+      });
+
       return updated;
     });
   };
@@ -107,19 +117,11 @@ const GameTable = ({
   const handleSitInternal = async (seatIndex) => {
     console.log("💡 SITTING AT SEAT INDEX:", seatIndex);
     let finalId;
-
     if (!activePlayerId) {
       const sk = generateSecretKey();
       finalId = getPublicKey(sk);
-
-      // Update the players list with the new ID
       setPlayers?.((prev) => [...prev, { id: finalId, pubkeySource: "guest" }]);
-
-      // Set active player ID
       setActivePlayerId?.(finalId);
-
-      // Wait a short moment for React to process the state updates
-      // Then send the sit message
       console.log("💥 SENDING FINAL ID:", finalId);
 
       sendMessage("displayGame", {
@@ -135,7 +137,6 @@ const GameTable = ({
         },
       });
     } else {
-      // Then send the sit message
       console.log("💥 SENDINGID:", activePlayerId);
 
       sendMessage("displayGame", {
@@ -152,16 +153,23 @@ const GameTable = ({
         },
       });
     }
-
-    // First send the join message
   };
 
+  //sendJoinChatMessage
   useEffect(() => {
     console.log("💡 JOINING CHAT");
     if (!activePlayerId || hasJoinedChatRef.current) return;
 
     // Confirm the active player is seated
-    const isSeated = playersAtTable.includes(activePlayerId);
+    // const isSeated = playersAtTable.includes(activePlayerId);
+    // const isSeated = playersAtTable.some((p) => {
+    //   const id = typeof p === "string" ? p : p?.id;
+    //   return id === activePlayerId;
+    // });
+    const isSeated = playersAtTable.some((p) => {
+      const id = typeof p === "string" ? p : p?.playerId; // ← Use playerId
+      return id === activePlayerId;
+    });
     if (!isSeated) return;
 
     hasJoinedChatRef.current = true;
@@ -191,10 +199,12 @@ const GameTable = ({
     });
   };
 
+  //setHoleCardsForAllPlayers
   useEffect(() => {
     const latestPrivate = [...displayGameMessages]
       .reverse()
       .find((m) => m?.hands); // ✅ Just check for hands, ignore empty hand field
+    console.log("✅ Found latest private hand message:", latestPrivate);
 
     // const latestPrivate = [...displayGameMessages]
     //   .reverse()
@@ -210,6 +220,7 @@ const GameTable = ({
           : [];
         parsedHands[pid] = parsed;
       }
+      console.log("Parsed player hands:", parsedHands);
       setPlayerHands(parsedHands);
 
       const viewerId = activePlayerId || null;
@@ -224,85 +235,15 @@ const GameTable = ({
     }
   }, [displayGameMessages, activePlayerId]);
 
-  // useEffect(() => {
-  //   if (!activePlayerId) return;
-
-  //   console.log("🔍 Looking for latest private hand message...");
-  //   const latestPrivate = [...displayGameMessages]
-  //     .reverse()
-  //     .find((m) => m?.hand && m?.hands);
-
-  //   if (latestPrivate) {
-  //     console.log("✅ Found latest private hand message:", latestPrivate);
-
-  //     const parsedHands = {};
-  //     // for (const [pid, hand] of Object.entries(latestPrivate.hands)) {
-  //     //   console.log(`🪪 Parsing hand for ${pid}:`, hand);
-  //     //   parsedHands[pid] = Array.isArray(hand)
-  //     //     ? hand.map((card) => (card ? parseCard(card) : null))
-  //     //     : [];
-  //     // }
-
-  //     for (const [pid, hand] of Object.entries(latestPrivate.hands)) {
-  //       const parsed = Array.isArray(hand)
-  //         ? hand.map((card) => (card ? parseCard(card) : null))
-  //         : [];
-  //       parsedHands[pid] = parsed;
-  //     }
-  //     setPlayerHands(parsedHands);
-
-  //     //setPlayerHands(parsedHands);
-
-  //     // const myHand = Array.isArray(latestPrivate.hand)
-  //     //   ? latestPrivate.hand.map((card) => parseCard(card))
-  //     //   : [];
-
-  //     const viewerId = activePlayerId || null;
-  //     const myHand = Array.isArray(latestPrivate.hand)
-  //       ? latestPrivate.hand.map((card) => parseCard(card))
-  //       : [];
-
-  //     console.log(
-  //       `👤 Setting hole cards for activePlayerId ${activePlayerId}:`,
-  //       myHand
-  //     );
-
-  //     setHoleCards(myHand);
-  //   } else {
-  //     console.warn("❌ No valid private hand message found.");
-  //   }
-  // }, [displayGameMessages, activePlayerId]);
-
-  // Updated logic for handling private hands
-  // useEffect(() => {
-  //   if (!activePlayerId) return;
-  //   console.log("Display game messages:", displayGameMessages);
-  //   const privateHandMsg = [...displayGameMessages]
-  //     .reverse()
-  //     .find(
-  //       (m) => m?.action === "privateHand" && m?.playerId === activePlayerId
-  //     );
-
-  //   if (privateHandMsg) {
-  //     const parsedHands = {};
-  //     for (const [pid, hand] of Object.entries(privateHandMsg.hands)) {
-  //       parsedHands[pid] = Array.isArray(hand)
-  //         ? hand.map((card) => (card ? parseCard(card) : null))
-  //         : [];
-  //     }
-  //     setPlayerHands(parsedHands);
-  //     setHoleCards(parsedHands[activePlayerId] || []);
-  //   }
-  // }, [displayGameMessages, activePlayerId]);
-
+  //playersaAtTable from server
   useEffect(() => {
     const msg = displayGameMessages[displayGameMessages.length - 1];
+    console.log("msg", msg);
     if (!msg) return;
 
     const {
       action,
       playerId,
-      seatIndex,
       playersAtTable: incomingSeats,
       gameState: newGameState,
       showdownWinner,
@@ -310,24 +251,37 @@ const GameTable = ({
     } = msg;
 
     if (Array.isArray(incomingSeats)) {
+      console.log(
+        "✅ Updating players at table with incoming seats:",
+        incomingSeats
+      );
+      console.log("seatCount", seatCount);
       const updatedSeats = Array(seatCount).fill(null);
       for (const entry of incomingSeats) {
         const { playerId, seatIndex } = entry;
+        console.log("entry", entry);
         if (
           typeof seatIndex === "number" &&
           seatIndex < seatCount &&
           playerId
         ) {
-          updatedSeats[seatIndex] = playerId;
+          updatedSeats[seatIndex] = { playerId, seatIndex };
         }
       }
-
+      console.log("updatedSeats", updatedSeats);
       setPlayersAtTable((prev) => {
         const same =
           prev.length === updatedSeats.length &&
-          prev.every((val, i) => val === updatedSeats[i]);
+          prev.every((val, i) => {
+            const next = updatedSeats[i];
+            if (!val && !next) return true;
+            if (!val || !next) return false;
+            return val.playerId === next.playerId;
+          });
+
         return same ? prev : updatedSeats;
       });
+      console.log("✅ PlayersAtTable: ", playersAtTable);
     }
 
     if (newGameState?.players) {
@@ -345,22 +299,8 @@ const GameTable = ({
       }));
     }
 
-    if (action === "sit" && typeof seatIndex === "number") {
-      setPlayersAtTable((prev) => {
-        if (prev.includes(playerId)) return prev;
-        const updated = [...prev];
-        updated[seatIndex] = playerId;
-        return updated;
-      });
-    }
-
-    if (action === "leave") {
-      setPlayersAtTable((prev) =>
-        prev.map((id) => (id === playerId ? null : id))
-      );
-    }
-
     if (msg.revealedHands) {
+      console.log("✅ Revealed hands message received:", msg.revealedHands);
       const parsed = {};
       for (const { playerId, hand } of msg.revealedHands) {
         parsed[playerId] = hand.map(parseCard); // your parseCard already works
@@ -413,19 +353,22 @@ const GameTable = ({
   const currentTurnPlayerId = gameState.turn;
 
   const dealerId =
-    typeof gameState.buttonIndex === "number"
-      ? playersAtTable[gameState.buttonIndex]
+    typeof gameState.buttonIndex === "number" &&
+    playersAtTable.length > gameState.buttonIndex
+      ? playersAtTable[gameState.buttonIndex]?.playerId
       : null;
 
   useEffect(() => {
     console.log("🔍 Checking dealer ID...");
     console.log("gameState.buttonIndex:", gameState.buttonIndex);
     console.log("playersAtTable:", playersAtTable);
+
     if (
       typeof gameState.buttonIndex === "number" &&
-      playersAtTable[gameState.buttonIndex]
+      playersAtTable[gameState.buttonIndex] &&
+      typeof playersAtTable[gameState.buttonIndex] === "object"
     ) {
-      const dealerId = playersAtTable[gameState.buttonIndex];
+      const dealerId = playersAtTable[gameState.buttonIndex]?.playerId;
       console.log("🎯 Dealer is:", dealerId);
     }
   }, [gameState.buttonIndex, playersAtTable]);
@@ -509,12 +452,12 @@ const GameTable = ({
     }
   };
 
-  const chatMessages = Object.values(messages)
-    .flat()
-    .filter((m) => m?.payload?.type === "chat")
-    .map((m) => m.payload);
-
-  const lastShowdownHandId = useRef(null);
+  const chatMessages = useMemo(() => {
+    return Object.values(messages)
+      .flat()
+      .filter((m) => m?.payload?.type === "chat")
+      .map((m) => m);
+  }, [messages]);
 
   useEffect(() => {
     const { street, showdownWinner } = gameState;
@@ -553,6 +496,40 @@ const GameTable = ({
     return () => clearTimeout(timer);
   }, [activePlayerId, sendMessage]);
 
+  useEffect(() => {
+    if (chatMessages.length === 0) return;
+
+    const latestChatMessage = chatMessages[chatMessages.length - 1];
+    console.log("🔍 Latest chat message:", latestChatMessage);
+    const latest = latestChatMessage?.payload;
+    console.log("🔍 Latest chat message:", latest);
+    if (!latest?.playerId || !latest?.text || !latestChatMessage.uuid) return;
+
+    // Skip if we already processed this message
+    if (processedMessageIds.has(latestChatMessage.uuid)) return;
+    const uuid = latestChatMessage.uuid;
+    const { playerId, text, system } = latest;
+    if (system) return; // 🚫 Skip system messages
+
+    // Mark this message as processed
+    setProcessedMessageIds((prev) => new Set([...prev, uuid]));
+
+    // Show the chat bubble
+    setPlayerChatMessages((prev) => ({
+      ...prev,
+      [playerId]: { text, timestamp: Date.now() },
+    }));
+
+    // Clear after 5 seconds
+    setTimeout(() => {
+      setPlayerChatMessages((prev) => {
+        const updated = { ...prev };
+        delete updated[playerId];
+        return updated;
+      });
+    }, 5000);
+  }, [chatMessages, processedMessageIds]);
+
   console.log("displayGameMessages ", displayGameMessages);
   console.log("currentTurnPlayerId ", currentTurnPlayerId);
   console.log("activePlayerId ", activePlayerId);
@@ -560,55 +537,121 @@ const GameTable = ({
   console.log("gameState ", gameState);
   console.log("playerBets ", playerBets);
 
+  useEffect(() => {
+    const fetchNostrProfile = async (pubkey) => {
+      console.log(`🌐 Fetching Nostr profile for ${pubkey}`);
+      return new Promise((resolve) => {
+        const sub = pool.subscribe(
+          relays,
+          { kinds: [0], authors: [pubkey], limit: 1 },
+          {
+            onevent(event) {
+              try {
+                const metadata = JSON.parse(event.content);
+                console.log(`✅ [${pubkey}] Profile FOUND:`, metadata);
+                resolve(metadata);
+              } catch (e) {
+                console.warn(`❌ [${pubkey}] Parse FAIL:`, e);
+                resolve(null);
+              } finally {
+                sub.close();
+              }
+            },
+            oneose() {
+              console.log(`⚠️ [${pubkey}] EOSE — No profile found.`);
+              resolve(null);
+              sub.close();
+            },
+          }
+        );
+      });
+    };
+
+    const resolveUnknownProfiles = async () => {
+      console.log("🔍 [Profile Resolver] BEGIN");
+
+      if (!Array.isArray(playersAtTable) || playersAtTable.length === 0) {
+        console.warn("🛑 playersAtTable missing or empty — skipping resolver.");
+        return;
+      }
+
+      console.log("🧑‍🤝‍🧑 playersAtTable:", playersAtTable);
+
+      const unresolved = playersAtTable.filter((p) => {
+        if (!p || typeof p !== "object") {
+          console.warn("🚫 Bad entry in playersAtTable:", p);
+          return false;
+        }
+        const { playerId, name, display_name, picture } = p;
+        const isValidId =
+          typeof playerId === "string" && /^[a-fA-F0-9]{64}$/.test(playerId);
+        const hasProfile = name || display_name || picture;
+        return isValidId && !hasProfile;
+      });
+
+      const unresolvedIds = unresolved.map((p) => p.playerId);
+      console.log("🕵️ Unresolved pubkeys:", unresolvedIds);
+
+      if (unresolvedIds.length === 0) {
+        console.log("✅ No unresolved profiles.");
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        unresolvedIds.map(async (id) => {
+          try {
+            const profile = await fetchNostrProfile(id);
+            console.log("📬 Profile fetched for", id, "=>", profile);
+            return { playerId: id, profile };
+          } catch (err) {
+            return { playerId: id, profile: null, error: err };
+          }
+        })
+      );
+
+      console.log("🧾 RESULTS:", results);
+
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          const { playerId, profile } = result.value;
+          console.log(
+            `  🔹 [${playerId}] ${profile ? "✅ RESOLVED" : "❌ NULL"}:`,
+            profile
+          );
+        } else {
+          console.warn(`  ❌ REJECTED [${unresolvedIds[i]}]:`, result.reason);
+        }
+      });
+
+      const updates = results
+        .filter((r) => r.status === "fulfilled" && r.value.profile)
+        .map((r) => r.value);
+
+      if (updates.length > 0) {
+        console.log(
+          "🔁 Injecting resolved profiles into playersAtTable:",
+          updates
+        );
+        setPlayersAtTable((prev) =>
+          prev.map((entry) => {
+            if (!entry || !entry.playerId) return entry;
+            const match = updates.find((u) => u.playerId === entry.playerId);
+            return match ? { ...entry, ...match.profile } : entry;
+          })
+        );
+      } else {
+        console.log("😶 No valid profiles to inject.");
+      }
+
+      console.log("✅ [Profile Resolver] DONE");
+    };
+
+    resolveUnknownProfiles();
+  }, [playersAtTable]);
+
   return (
     <div className="container-fluidpy-4">
-      <div className="d-flex justify-content-center mt-4">
-        <ChatWindow
-          playerId={activePlayerId}
-          sendMessage={(msg) =>
-            sendMessage("chat", {
-              relayId: "chat",
-              payload: {
-                type: "chat",
-                playerId: activePlayerId,
-                text: msg.text,
-                action: "chat",
-              },
-            })
-          }
-          messages={chatMessages}
-          setPlayers={setPlayers}
-          setActivePlayerId={setActivePlayerId}
-        />
-      </div>
-      {/* {gameState.showdownWinner && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center"
-          style={{ zIndex: 9999 }}
-        >
-          <div
-            className="bg-white rounded p-4 shadow-lg text-center"
-            style={{ maxWidth: "400px" }}
-          >
-            <h3 className="mb-3">🏆 Winner</h3>
-            <p className="mb-2">
-              <strong>
-                {allPlayers.find((p) => p.id === gameState.showdownWinner)
-                  ?.name || gameState.showdownWinner.slice(0, 6)}
-              </strong>
-            </p>
-            <p className="text-muted">
-              {
-                gameState.showdownResults?.find(
-                  (r) => r.id === gameState.showdownWinner
-                )?.description
-              }
-            </p>
-          </div>
-        </div>
-      )} */}
-
-      <div className="d-flex flex-column align-items-center mt-5">
+      <div className="d-flex flex-column align-items-center mt-3">
         <h2 className="text-center mb-3 mt-3">Demo Table</h2>
         {gameState.street === "showdown" && (
           <div className="showdown-results text-center mb-4">
@@ -616,8 +659,9 @@ const GameTable = ({
             {gameState.showdownResults?.map((res) => (
               <div key={res.id}>
                 <strong>
-                  {allPlayers.find((p) => p.id === res.id)?.name ||
-                    res.id.slice(0, 6)}
+                  {playersAtTable.find((p) => p?.playerId === res.id)?.name ||
+                    res.id?.slice(0, 6) ||
+                    "Unknown"}
                 </strong>
                 : {res.description}
               </div>
@@ -680,8 +724,10 @@ const GameTable = ({
             <div className="mb-3 text-center">
               <span className="badge bg-info text-dark">
                 Player Turn:{" "}
-                {allPlayers.find((p) => p.id === currentTurnPlayerId)?.name ||
-                  currentTurnPlayerId.slice(0, 6)}
+                {playersAtTable.find((p) => p?.playerId === currentTurnPlayerId)
+                  ?.name ||
+                  currentTurnPlayerId?.slice(0, 6) ||
+                  "Unknown"}
               </span>
             </div>
           )}
@@ -725,7 +771,7 @@ const GameTable = ({
                 textShadow: "1px 1px 2px rgba(0,0,0,0.4)",
               }}
             >
-              ♠ POGN Game Board ♣
+              ♠ POGN ♣
             </div>
 
             <div
@@ -776,9 +822,8 @@ const GameTable = ({
               const angle = (2 * Math.PI * idx) / seatCount - Math.PI / 2;
               const x = cx + (radiusX + seatOffsetX) * Math.cos(angle);
               const y = cy + (radiusY + seatOffsetY) * Math.sin(angle);
-
-              const playerId = playersAtTable[idx];
-              const playerObj = allPlayers.find((p) => p.id === playerId);
+              const playerObj = playersAtTable[idx];
+              const playerId = playerObj?.playerId;
 
               return (
                 <PlayerHUD
@@ -811,12 +856,12 @@ const GameTable = ({
                       : []
                   }
                   isWinner={playerId && playerId === winnerOverlayId}
+                  chatMessage={playerChatMessages[playerId]?.text}
                 />
               );
             })}
         </div>
-
-        {playersAtTable.includes(activePlayerId) &&
+        {playersAtTable.some((p) => p?.playerId === activePlayerId) &&
           gameState.players?.[activePlayerId] && (
             <div className="w-50 d-flex mt-5 flex-column justify-content-end">
               {getPlayerHandRank() && (
@@ -943,6 +988,27 @@ const GameTable = ({
               </div>
             </div>
           )}
+      </div>
+      <div className="d-flex flex-column  align-items-center mb-5 mt-4">
+        <h3 className="text-center mb-3">Demo Game Chat</h3>
+        <ChatWindow
+          playerId={activePlayerId}
+          sendMessage={(msg) =>
+            sendMessage("chat", {
+              relayId: "chat",
+              payload: {
+                type: "chat",
+                playerId: activePlayerId,
+                text: msg.text,
+                action: "chat",
+              },
+            })
+          }
+          messages={chatMessages}
+          setPlayers={setPlayers}
+          setActivePlayerId={setActivePlayerId}
+          playersAtTable={playersAtTable}
+        />
       </div>
     </div>
   );

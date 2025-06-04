@@ -25,6 +25,7 @@ const PlayerHUD = ({
   stack,
   holeCards,
   isWinner,
+  chatMessage = "",
 }) => {
   //const [isDealer, setIsDealer] = useState(true);
 
@@ -52,6 +53,37 @@ const PlayerHUD = ({
       }}
       onClick={onClick}
     >
+      {chatMessage && (
+        <div
+          className="chat-bubble"
+          style={{
+            position: "absolute",
+            bottom: "140%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "white",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "4px 8px",
+            fontSize: "0.8rem",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            zIndex: 10,
+            opacity: 1,
+            animation: "fadeOut 0.5s ease-in-out forwards",
+            animationDelay: "4.5s",
+
+            width: "180px",
+            maxHeight: "60px",
+            overflowY: "auto", // 🔥 Enables vertical scrolling
+            overflowX: "hidden",
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
+        >
+          {chatMessage}
+        </div>
+      )}
+
       {/* Hole cards behind HUD */}
       {playerId && (
         <div

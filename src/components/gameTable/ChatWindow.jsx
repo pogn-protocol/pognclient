@@ -7,6 +7,8 @@ const ChatWindow = ({
   messages,
   setPlayers,
   setActivePlayerId,
+  playersAtTable = [],
+  players = [],
 }) => {
   const [joined, setJoined] = useState(false);
   const [input, setInput] = useState("");
@@ -37,7 +39,7 @@ const ChatWindow = ({
     if (!messages || joined || !playerId) return;
     console.log("messages", messages);
     const latestJoin = messages.find(
-      (m) => m?.action === "joined" && m?.playerId === playerId
+      (m) => m?.payload.action === "joined" && m?.payload.playerId === playerId
     );
 
     if (latestJoin) {
@@ -69,14 +71,30 @@ const ChatWindow = ({
       >
         {(messages || []).map((msg, i) => (
           <div key={i}>
-            {msg.system ? (
-              <em className="text-muted d-block text-center">{msg.text}</em>
+            {msg.payload.system ? (
+              <em className="text-primary d-block text-center">
+                {msg.payload.text}
+              </em>
             ) : (
               <span>
                 <strong>
-                  {msg?.playerId === playerId ? "You" : msg?.playerId}
+                  {(() => {
+                    if (msg?.payload.playerId === playerId)
+                      return <span className="text-success">You</span>;
+                    const match =
+                      players.find((p) => p.id === msg.payload.playerId) ||
+                      playersAtTable.find(
+                        (p) => p?.playerId === msg.payload.playerId
+                      );
+
+                    return (
+                      match?.display_name ||
+                      match?.name ||
+                      msg.payload.playerId.slice(0, 10)
+                    );
+                  })()}
                 </strong>
-                : {msg?.text}
+                : {msg.payload.text}
               </span>
             )}
           </div>

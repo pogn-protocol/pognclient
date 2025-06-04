@@ -156,25 +156,6 @@ const App = () => {
 
   console.log("showInviteModal", showInviteModal);
 
-  const [playersAtTable, setPlayersAtTable] = useState(Array(6).fill(null));
-
-  const handleSit = (seatIndex) => {
-    setPlayersAtTable((prev) => {
-      if (!activePlayerId) return prev;
-
-      // Prevent sitting if someone else is already there
-      if (prev[seatIndex] && prev[seatIndex] !== activePlayerId) return prev;
-
-      // Remove player from any seat they’re already in
-      const newSeats = prev.map((id) => (id === activePlayerId ? null : id));
-
-      // Sit at the selected seat
-      newSeats[seatIndex] = activePlayerId;
-
-      return newSeats;
-    });
-  };
-
   return (
     <ErrorBoundary>
       <div className="w-full max-w-[800px] flex flex-col justify-center items-center mx-auto p-4">
@@ -202,10 +183,17 @@ const App = () => {
         </header>
 
         <div className="w-full max-w-screen-xl flex flex-col gap-2">
+          <Players
+            setActivePlayerId={setActivePlayerId}
+            sendMessage={handleSendMessage}
+            activePlayerId={activePlayerId}
+            setNostrProfileData={setNostrProfileData}
+            nostrProfileData={nostrProfileData}
+            players={players}
+            setPlayers={setPlayers}
+          />
           {activePlayerId && (
             <GameTable
-              playersAtTable={playersAtTable}
-              onSit={handleSit}
               activePlayerId={activePlayerId}
               setActivePlayerId={setActivePlayerId}
               setPlayers={setPlayers}
@@ -216,21 +204,7 @@ const App = () => {
               messages={Object.values(messages).flat() || []}
             />
           )}
-          <div className="">
-            <p className="italic text-gray-600">
-              Hint: For demo play of auto-generated games, open two clients and
-              choose one of the provided IDs for each player.
-            </p>
-          </div>
-          <Players
-            setActivePlayerId={setActivePlayerId}
-            sendMessage={handleSendMessage}
-            activePlayerId={activePlayerId}
-            setNostrProfileData={setNostrProfileData}
-            nostrProfileData={nostrProfileData}
-            players={players}
-            setPlayers={setPlayers}
-          />
+
           <RelayManager
             addRelayConnections={addRelayConnections}
             setAddRelayConnections={setAddRelayConnections}
@@ -253,7 +227,12 @@ const App = () => {
             messages={messages}
             playerId={activePlayerId}
           />
-
+          <div className="">
+            <p className="italic text-gray-600">
+              Hint: For demo play of auto-generated games, open two clients and
+              choose one of the provided IDs for each player.
+            </p>
+          </div>
           <Lobbies
             playerId={activePlayerId}
             nostrProfileData={nostrProfileData}
