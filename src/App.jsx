@@ -178,7 +178,7 @@ const App = () => {
         <header className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">POGN Client</h1>
           <h2 className="text-md text-gray-600">
-            Poker and Other Game On NOSTR
+            Poker and Other Games On NOSTR
           </h2>
         </header>
 
