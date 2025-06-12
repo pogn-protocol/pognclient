@@ -10,7 +10,7 @@ import MessagesUI from "./components/messages/MessagesUI";
 import Players from "./components/user/Players";
 import GameInviteModal from "./components/user/GameInviteModal";
 import { useNostrExtensionKey } from "./components/hooks/useNostrExtensionKey";
-import GameTable from "./components/gameTable/GameTable";
+import DemoGame from "./components/demoGame/DemoGame";
 console.log("pognClientConfigs", pognClientConfigs);
 
 window.onerror = function (message, source, lineno, colno, error) {
@@ -193,7 +193,7 @@ const App = () => {
             setPlayers={setPlayers}
           />
           {activePlayerId && (
-            <GameTable
+            <DemoGame
               activePlayerId={activePlayerId}
               setActivePlayerId={setActivePlayerId}
               setPlayers={setPlayers}

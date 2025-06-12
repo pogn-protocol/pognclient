@@ -15,8 +15,6 @@ const relays = [
 ];
 const pool = new SimplePool();
 
-// const { game, gameId, playerId, gameAction, gameActionParams } = payload;
-// ^^^^ new payload structure to match server
 const CONFIG = {
   seatCountMin: 2,
   seatCountMax: 9,
@@ -76,7 +74,6 @@ const GameTable = ({
     console.log("🔍 displayGameMessages:", displayGameMessages);
   }, [displayGameMessages]);
 
-  //tableSizing
   useEffect(() => {
     const updateSize = () => {
       if (tableRef.current) {
@@ -98,7 +95,6 @@ const GameTable = ({
     setPlayersAtTable((prev) => {
       const updated = Array(newCount).fill(null);
 
-      // preserve only those with valid seatIndex < newCount
       prev.forEach((player) => {
         if (
           player &&
@@ -155,17 +151,9 @@ const GameTable = ({
     }
   };
 
-  //sendJoinChatMessage
   useEffect(() => {
     console.log("💡 JOINING CHAT");
     if (!activePlayerId || hasJoinedChatRef.current) return;
-
-    // Confirm the active player is seated
-    // const isSeated = playersAtTable.includes(activePlayerId);
-    // const isSeated = playersAtTable.some((p) => {
-    //   const id = typeof p === "string" ? p : p?.id;
-    //   return id === activePlayerId;
-    // });
     const isSeated = playersAtTable.some((p) => {
       const id = typeof p === "string" ? p : p?.playerId; // ← Use playerId
       return id === activePlayerId;
@@ -199,16 +187,11 @@ const GameTable = ({
     });
   };
 
-  //setHoleCardsForAllPlayers
   useEffect(() => {
     const latestPrivate = [...displayGameMessages]
       .reverse()
-      .find((m) => m?.hands); // ✅ Just check for hands, ignore empty hand field
+      .find((m) => m?.hands); 
     console.log("✅ Found latest private hand message:", latestPrivate);
-
-    // const latestPrivate = [...displayGameMessages]
-    //   .reverse()
-    //   .find((m) => m?.hand && m?.hands);
 
     if (latestPrivate) {
       console.log("✅ Found latest private hand message:", latestPrivate);
@@ -235,7 +218,6 @@ const GameTable = ({
     }
   }, [displayGameMessages, activePlayerId]);
 
-  //playersaAtTable from server
   useEffect(() => {
     const msg = displayGameMessages[displayGameMessages.length - 1];
     console.log("msg", msg);
@@ -471,7 +453,6 @@ const GameTable = ({
 
       return () => clearTimeout(timeout);
     } else if (street !== "showdown") {
-      // Clear winner when not in showdown
       setWinnerOverlayId(null);
     }
   }, [gameState.street, gameState.showdownWinner]);
@@ -505,7 +486,6 @@ const GameTable = ({
     console.log("🔍 Latest chat message:", latest);
     if (!latest?.playerId || !latest?.text || !latestChatMessage.uuid) return;
 
-    // Skip if we already processed this message
     if (processedMessageIds.has(latestChatMessage.uuid)) return;
     const uuid = latestChatMessage.uuid;
     const { playerId, text, system } = latest;

@@ -1,0 +1,43 @@
+.gameTableDiv {
+  background-color: #198754;
+  border: 4px solid black;
+  border-radius: 35% / 50%;
+  overflow: visible;
+  position: relative;
+  margin-top: -24px;
+}
+
+.gameTable-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #212529;
+  color: white;
+  font-weight: bold;
+  border: 2px solid white;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 0;
+}
+
+.seat {
+  position: absolute;
+  background-color: white;
+  border: 1px solid black;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  z-index: 1;
+}
+.seat:hover {
+  background-color: #ffc107;
+}
+
+.hole-cards {
+  z-index: -2 !important;
+}
