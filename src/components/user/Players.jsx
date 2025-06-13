@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect } from "react";
 import Dashboard from "./Dashboard";
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure";
 import { useNostrExtensionKey } from "../hooks/useNostrExtensionKey";

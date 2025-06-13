@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import GameConsole from "./components/gameConsole/GameConsole";
 import useMessages from "./components/hooks/useMessages";

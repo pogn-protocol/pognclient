@@ -1,4 +1,3 @@
-import React from "react";
 import Ranker from "handranker";
 
 const PlayerControls = ({

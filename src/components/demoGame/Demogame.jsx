@@ -18,19 +18,16 @@ const CONFIG = {
 const DemoGame = ({
   activePlayerId,
   setActivePlayerId,
-  players = [],
   setPlayers,
-  nostrProfileData,
   sendMessage,
   messages,
 }) => {
   const [seatCount, setSeatCount] = useState(6);
   const tableRef = useRef(null);
   const [tableSize, setTableSize] = useState({ width: 600, height: 300 });
-  const minBet = 50;
+  const minBet = 20;
   const smallBlind = 10;
   const [betAmount, setBetAmount] = useState(minBet);
-  const [playerBets, setPlayerBets] = useState({});
   const hasJoinedChatRef = useRef(false);
   const [playerChatMessages, setPlayerChatMessages] = useState({});
   const [processedMessageIds, setProcessedMessageIds] = useState(new Set());
@@ -185,31 +182,6 @@ const DemoGame = ({
     });
   };
 
-  function parseCard(code) {
-    if (!code || typeof code !== "string") return null;
-
-    if (code === "X") {
-      return {
-        id: "X",
-        src: "https://deckofcardsapi.com/static/img/back.png", // ✅ This is their card back image
-        value: "X",
-        suit: "X",
-        isFaceDown: true,
-      };
-    }
-
-    const value = code[0] === "T" ? "0" : code[0];
-    const suit = code[1].toUpperCase();
-
-    return {
-      id: code,
-      src: `https://deckofcardsapi.com/static/img/${value}${suit}.png`,
-      value,
-      suit,
-      isFaceDown: false,
-    };
-  }
-
   const chatMessages = useMemo(() => {
     return Object.values(messages)
       .flat()
@@ -293,16 +265,16 @@ const DemoGame = ({
     }, 5000);
   }, [chatMessages, processedMessageIds]);
 
-  console.log("displayGameMessages ", displayGameMessages);
-  console.log("currentTurnPlayerId ", currentTurnPlayerId);
-  console.log("activePlayerId ", activePlayerId);
-  console.log("playersAtTable ", playersAtTable);
-  console.log("gameState ", gameState);
-  console.log("playerBets ", playerBets);
+  // console.log("displayGameMessages ", displayGameMessages);
+  // console.log("currentTurnPlayerId ", currentTurnPlayerId);
+  // console.log("activePlayerId ", activePlayerId);
+  // console.log("playersAtTable ", playersAtTable);
+  // console.log("gameState ", gameState);
 
   return (
-    <div className="container-fluidpy-4">
-      <div className="d-flex flex-column align-items-center mt-3">
+    <div className="container-fluid py-4">
+      {/* Table Controls */}
+      <div className="d-flex flex-column align-items-center mt-3 mb-3">
         <h2 className="text-center mb-3 mt-3">Demo Table</h2>
 
         {/* Number of Seats Select */}
@@ -357,10 +329,7 @@ const DemoGame = ({
         </div>
 
         {/* Player Turn and Street */}
-        <div
-          className="d-flex flex-row gap-2 mb-5"
-          style={{ minHeight: "150px", maxHeight: "300px", overflowY: "auto" }}
-        >
+        <div className="d-flex flex-row gap-2">
           {currentTurnPlayerId && (
             <div className="mb-3 text-center">
               <span className="badge bg-info text-dark">
@@ -388,32 +357,33 @@ const DemoGame = ({
         </div>
 
         {/* Showdown Results */}
-        {gameState.street === "showdown" && (
-          <div className="showdown-results text-center mb-4">
-            <h4 className="mb-2">🃏 Showdown Hands</h4>
-            {gameState.showdownResults?.map((res) => (
-              <div key={res.id}>
-                <strong>
-                  {playersAtTable.find((p) => p?.playerId === res.id)?.name ||
-                    res.id?.slice(0, 6) ||
-                    "Unknown"}
-                </strong>
-                : {res.description}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="mb-4">
+          {gameState.street === "showdown" && (
+            <div className="showdown-results text-center">
+              <h4 className="mb-2">🃏 Showdown Hands</h4>
+              {gameState.showdownResults?.map((res) => (
+                <div key={res.id}>
+                  <strong>
+                    {playersAtTable.find((p) => p?.playerId === res.id)?.name ||
+                      res.id?.slice(0, 6) ||
+                      "Unknown"}
+                  </strong>
+                  : {res.description}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Game Table */}
-      <div className="d-flex flex-column align-items-center">
+      <div className="d-flex flex-column align-items-center mt-5">
         <GameTable
           tableRef={tableRef}
           seatCount={seatCount}
           tableSize={tableSize}
           CONFIG={CONFIG}
           gameState={gameState}
-          parseCard={parseCard}
           playersAtTable={playersAtTable}
           playerStacks={playerStacks}
           playerHands={playerHands}
@@ -425,7 +395,7 @@ const DemoGame = ({
         />
       </div>
 
-      {/* Player Control */}
+      {/* Player Controls */}
       <div className="d-flex flex-column align-items-center mb-5">
         <PlayerControls
           activePlayerId={activePlayerId}
@@ -441,6 +411,7 @@ const DemoGame = ({
           holeCards={holeCards}
         />
       </div>
+
       {/* Chat Window */}
       <div className="d-flex flex-column  align-items-center mb-5 mt-4">
         <h3 className="text-center mb-3">Demo Game Chat</h3>

@@ -8,7 +8,6 @@ const GameTable = ({
   tableSize,
   CONFIG,
   gameState,
-  parseCard,
   playersAtTable,
   playerStacks,
   playerHands,
@@ -32,10 +31,35 @@ const GameTable = ({
       ? playersAtTable[gameState.buttonIndex]?.playerId
       : null;
 
+  function parseCard(code) {
+    if (!code || typeof code !== "string") return null;
+
+    if (code === "X") {
+      return {
+        id: "X",
+        src: "https://deckofcardsapi.com/static/img/back.png",
+        value: "X",
+        suit: "X",
+        isFaceDown: true,
+      };
+    }
+
+    const value = code[0] === "T" ? "0" : code[0];
+    const suit = code[1].toUpperCase();
+
+    return {
+      id: code,
+      src: `https://deckofcardsapi.com/static/img/${value}${suit}.png`,
+      value,
+      suit,
+      isFaceDown: false,
+    };
+  }
+
   return (
     <div
       ref={tableRef}
-      className="gameTableDiv position-relative mb-5 px-4"
+      className="gameTableDiv position-relative my-5 px-4"
       style={{
         width: "85%",
         maxWidth: "900px",
