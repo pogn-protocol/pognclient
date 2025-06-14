@@ -63,9 +63,8 @@ const DemoGame = ({
     console.log("🔍 displayGameMessages:", displayGameMessages);
   }, [displayGameMessages]);
 
-  {
-    /* Init table */
-  }
+  /* Init table */
+
   useEffect(() => {
     const updateSize = () => {
       if (tableRef.current) {

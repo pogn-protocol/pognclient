@@ -69,7 +69,6 @@ const App = () => {
 
   const isNostrActivePlayer = nostrPubkey && activePlayerId === nostrPubkey;
 
-  // Handle invite URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const parsed = Object.fromEntries(params.entries());
