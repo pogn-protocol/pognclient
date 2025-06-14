@@ -1,4 +1,3 @@
-import React from "react";
 import PlayerHUD from "./PlayerHUD";
 import "./gameTable.css";
 

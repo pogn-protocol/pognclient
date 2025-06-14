@@ -27,8 +27,6 @@ const PlayerHUD = ({
   isWinner,
   chatMessage = "",
 }) => {
-  //const [isDealer, setIsDealer] = useState(true);
-
   const profilePic =
     playerObj?.picture ||
     createAvatar(identiconSprites, {
@@ -74,7 +72,7 @@ const PlayerHUD = ({
 
             width: "180px",
             maxHeight: "60px",
-            overflowY: "auto", // 🔥 Enables vertical scrolling
+            overflowY: "auto",
             overflowX: "hidden",
             whiteSpace: "normal",
             wordBreak: "break-word",
